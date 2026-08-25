@@ -1,6 +1,6 @@
 # Livecheck
 
-[![CI](https://github.com/Ibrahim106/livecheck/actions/workflows/ci.yml/badge.svg)](https://github.com/Ibrahim106/livecheck/actions/workflows/ci.yml)
+[![CI](https://github.com/Ibra106i/livecheck/actions/workflows/ci.yml/badge.svg)](https://github.com/Ibra106i/livecheck/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/livecheck-audit)](https://www.npmjs.com/package/livecheck-audit)
 [![license](https://img.shields.io/npm/l/livecheck)](./LICENSE)
 [![node](https://img.shields.io/node/v/livecheck)](./package.json)
