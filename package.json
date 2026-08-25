@@ -1,6 +1,6 @@
 {
   "name": "livecheck-audit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Run a fixed technical checklist against any deployed website and get a scored, timestamped report.",
   "type": "module",
   "license": "MIT",
