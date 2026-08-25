@@ -1,6 +1,6 @@
 {
   "name": "livechecks",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Run a fixed technical checklist against any deployed website and get a scored, timestamped report.",
   "type": "module",
   "license": "MIT",
