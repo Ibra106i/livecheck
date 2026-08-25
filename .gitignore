@@ -3,5 +3,6 @@ dist
 coverage
 *.log
 .DS_Store
-livecheck-reports/`nreports/
+livecheck-reports/
+reports/
 .env
