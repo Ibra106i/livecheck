@@ -45,6 +45,7 @@ Exit code is `0` when nothing fails and `1` when at least one check fails, so it
 | `--json` | Print the report as machine-readable JSON |
 | `-o, --out <dir>` | Save markdown + JSON reports to a directory |
 | `--probe-forms` | Actively submit the first form found (off by default) |
+| `--ai` | Append a plain-language AI analysis of the results (requires an API key, see below) |
 | `--lighthouse` | Add a Lighthouse performance score (requires `npm i -D lighthouse chrome-launcher`) |
 | `-t, --timeout <ms>` | Per-check timeout in milliseconds (default `20000`) |
 
@@ -71,6 +72,20 @@ Each check carries a weight (default `1`, critical checks `2`). Passing earns fu
 - `70-89` Minor issues before launch
 - `50-69` Needs work before launch
 - `<50` Not ready for visitors
+
+## AI analysis
+
+Pass `--ai` to add a plain-language explanation of every failure and warning: what is wrong, why it matters, and how to fix it. Works with any OpenAI-compatible provider:
+
+```bash
+export LIVECHECK_AI_KEY="sk-..."                      # or OPENAI_API_KEY
+export LIVECHECK_AI_BASE_URL="https://api.openai.com/v1"   # default
+export LIVECHECK_AI_MODEL="gpt-4o-mini"               # default
+
+npx livecheck-audit https://yoursite.com --ai
+```
+
+Only structured check results (titles, statuses, detail strings) are sent to the provider - never page content, credentials, or HTML. Without a key the flag is skipped with a notice and the audit still completes.
 
 ## Reports
 

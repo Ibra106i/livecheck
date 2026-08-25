@@ -85,6 +85,7 @@ export interface AuditReport {
   score: number;
   summary: ReportSummary;
   results: CheckResult[];
+  aiAnalysis?: string;
 }
 
 export interface Check {

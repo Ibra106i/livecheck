@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
+import { enhanceReport } from './ai/enhance';
 import { runAudit } from './core/runner';
 import { renderJson } from './report/json';
 import { renderMarkdown } from './report/markdown';
@@ -15,6 +16,7 @@ interface CliOptions {
   out?: string;
   probeForms?: boolean;
   lighthouse?: boolean;
+  ai?: boolean;
   timeout?: string;
 }
 
@@ -29,6 +31,7 @@ program
   .option('-o, --out <dir>', 'save markdown and JSON reports to this directory')
   .option('--probe-forms', 'actively submit the first form found (default: passive analysis)')
   .option('--lighthouse', 'include a Lighthouse performance score if lighthouse is installed')
+  .option('--ai', 'add a plain-language AI analysis of the results (requires LIVECHECK_AI_KEY or OPENAI_API_KEY)')
   .option('-t, --timeout <ms>', 'per-check timeout in milliseconds', '20000')
   .action(async (urlArg: string, options: CliOptions) => {
     const timeoutMs = Number(options.timeout ?? 20000);
@@ -38,6 +41,14 @@ program
         useLighthouse: options.lighthouse ?? false,
         timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 20000,
       });
+
+      if (options.ai) {
+        try {
+          report.aiAnalysis = await enhanceReport(report);
+        } catch (error) {
+          console.warn(pc.yellow(`livecheck: AI analysis skipped (${errorMessage(error)})`));
+        }
+      }
 
       let savedPaths: string[] = [];
       if (options.out) {

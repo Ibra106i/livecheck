@@ -45,6 +45,16 @@ export function renderTerminal(report: AuditReport): string[] {
     `  ${pc.green(`${pass} passed`)}  ${pc.red(`${fail} failed`)}  ${pc.yellow(`${warn} warnings`)}  ${pc.dim(`${skip} skipped`)}`
   );
   lines.push(pc.dim(`  Checked ${report.startedAt}`));
+
+  if (report.aiAnalysis) {
+    lines.push('');
+    lines.push(pc.bold(pc.magenta('  AI ANALYSIS')));
+    for (const line of report.aiAnalysis.split('\n')) {
+      lines.push(line ? `    ${line}` : '');
+    }
+    lines.push('');
+  }
+
   lines.push('');
   return lines;
 }
