@@ -26,7 +26,7 @@ const program = new Command();
 loadEnvFile();
 
 program
-  .name('livecheck-audit')
+  .name('livechecks')
   .description('Audit a deployed website against the Livecheck technical checklist.')
   .version(VERSION)
   .argument('<url>', 'URL of the site to audit')

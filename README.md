@@ -1,7 +1,7 @@
 # Livecheck
 
 [![CI](https://github.com/Ibra106i/livecheck/actions/workflows/ci.yml/badge.svg)](https://github.com/Ibra106i/livecheck/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/livecheck-audit)](https://www.npmjs.com/package/livecheck-audit)
+[![npm](https://img.shields.io/npm/v/livechecks)](https://www.npmjs.com/package/livechecks)
 [![license](https://img.shields.io/npm/l/livecheck)](./LICENSE)
 [![node](https://img.shields.io/node/v/livecheck)](./package.json)
 
@@ -12,7 +12,7 @@ Built for the last mile of AI-built sites: they generate fast, then break at lau
 ## Quick start
 
 ```bash
-npx livecheck-audit https://yoursite.com
+npx livechecks https://yoursite.com
 ```
 
 ```
@@ -35,7 +35,7 @@ npx livecheck-audit https://yoursite.com
 Exit code is `0` when nothing fails and `1` when at least one check fails, so it drops straight into CI:
 
 ```yaml
-- run: npx livecheck-audit https://yoursite.com
+- run: npx livechecks https://yoursite.com
 ```
 
 ## Options
@@ -78,7 +78,7 @@ Each check carries a weight (default `1`, critical checks `2`). Passing earns fu
 Pass `--ai` to add a plain-language explanation of every failure and warning: what is wrong, why it matters, and how to fix it.
 
 ```bash
-npx livecheck-audit https://yoursite.com --ai
+npx livechecks https://yoursite.com --ai
 ```
 
 The analysis runs through a pre-configured OpenAI-compatible provider on the machine running the audit (via `LIVECHECK_AI_KEY`, `GROQ_API_KEY`, or `OPENAI_API_KEY`, with optional `LIVECHECK_AI_BASE_URL` / `LIVECHECK_AI_MODEL` overrides). No setup is required if you are running reports provided to you.
