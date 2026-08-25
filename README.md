@@ -77,27 +77,11 @@ Each check carries a weight (default `1`, critical checks `2`). Passing earns fu
 
 Pass `--ai` to add a plain-language explanation of every failure and warning: what is wrong, why it matters, and how to fix it.
 
-The easiest setup is Groq: create a `.env` file next to where you run the command:
-
-```bash
-GROQ_API_KEY=gsk_...
-```
-
-That is it - the key is auto-detected and routed to Groq's API with `llama-3.3-70b-versatile`. The CLI loads `.env` from your current working directory.
-
-Any OpenAI-compatible provider also works via environment variables:
-
-| Variable | Purpose |
-| -------- | ------- |
-| `LIVECHECK_AI_KEY` | Overrides provider detection |
-| `GROQ_API_KEY` | Enables Groq (auto-routed) |
-| `OPENAI_API_KEY` | OpenAI-compatible fallback |
-| `LIVECHECK_AI_BASE_URL` | Custom endpoint (default: provider-specific) |
-| `LIVECHECK_AI_MODEL` | Model override (default: provider-specific) |
-
 ```bash
 npx livecheck-audit https://yoursite.com --ai
 ```
+
+The analysis runs through a pre-configured OpenAI-compatible provider on the machine running the audit (via `LIVECHECK_AI_KEY`, `GROQ_API_KEY`, or `OPENAI_API_KEY`, with optional `LIVECHECK_AI_BASE_URL` / `LIVECHECK_AI_MODEL` overrides). No setup is required if you are running reports provided to you.
 
 Only structured check results (titles, statuses, detail strings) are sent to the provider - never page content, credentials, or HTML. Without a key the flag is skipped with a notice and the audit still completes.
 
