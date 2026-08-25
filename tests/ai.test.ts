@@ -75,7 +75,7 @@ describe('resolveAiConfig', () => {
     const config = resolveAiConfig();
     expect(config.apiKey).toBe('gsk_test');
     expect(config.baseUrl).toBe('https://api.groq.com/openai/v1');
-    expect(config.model).toBe('llama-3.3-70b-versatile');
+    expect(config.model).toBe('openai/gpt-oss-120b');
   });
 
   it('applies custom base url and model', () => {

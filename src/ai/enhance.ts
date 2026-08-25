@@ -12,7 +12,7 @@ interface ChatResponse {
 }
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
-const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-120b';
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
 export function resolveAiConfig(): AiConfig {
