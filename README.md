@@ -1,7 +1,7 @@
 # Livecheck
 
 [![CI](https://github.com/Ibrahim106/livecheck/actions/workflows/ci.yml/badge.svg)](https://github.com/Ibrahim106/livecheck/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/livecheck)](https://www.npmjs.com/package/livecheck)
+[![npm](https://img.shields.io/npm/v/livecheck-audit)](https://www.npmjs.com/package/livecheck-audit)
 [![license](https://img.shields.io/npm/l/livecheck)](./LICENSE)
 [![node](https://img.shields.io/node/v/livecheck)](./package.json)
 
@@ -12,7 +12,7 @@ Built for the last mile of AI-built sites: they generate fast, then break at lau
 ## Quick start
 
 ```bash
-npx livecheck https://yoursite.com
+npx livecheck-audit https://yoursite.com
 ```
 
 ```
@@ -35,7 +35,7 @@ npx livecheck https://yoursite.com
 Exit code is `0` when nothing fails and `1` when at least one check fails, so it drops straight into CI:
 
 ```yaml
-- run: npx livecheck https://yoursite.com
+- run: npx livecheck-audit https://yoursite.com
 ```
 
 ## Options

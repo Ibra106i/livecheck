@@ -21,7 +21,7 @@ interface CliOptions {
 const program = new Command();
 
 program
-  .name('livecheck')
+  .name('livecheck-audit')
   .description('Audit a deployed website against the Livecheck technical checklist.')
   .version(VERSION)
   .argument('<url>', 'URL of the site to audit')

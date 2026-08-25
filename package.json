@@ -1,5 +1,5 @@
 {
-  "name": "livecheck",
+  "name": "livecheck-audit",
   "version": "0.1.0",
   "description": "Run a fixed technical checklist against any deployed website and get a scored, timestamped report.",
   "type": "module",
@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "bin": {
-    "livecheck": "./dist/cli.js"
+    "livecheck-audit": "./dist/cli.js"
   },
   "files": [
     "dist",
