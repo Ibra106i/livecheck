@@ -3,6 +3,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { enhanceReport } from './ai/enhance';
+import { loadEnvFile } from './ai/env';
 import { runAudit } from './core/runner';
 import { renderJson } from './report/json';
 import { renderMarkdown } from './report/markdown';
@@ -21,6 +22,8 @@ interface CliOptions {
 }
 
 const program = new Command();
+
+loadEnvFile();
 
 program
   .name('livecheck-audit')

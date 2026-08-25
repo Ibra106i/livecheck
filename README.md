@@ -75,13 +75,27 @@ Each check carries a weight (default `1`, critical checks `2`). Passing earns fu
 
 ## AI analysis
 
-Pass `--ai` to add a plain-language explanation of every failure and warning: what is wrong, why it matters, and how to fix it. Works with any OpenAI-compatible provider:
+Pass `--ai` to add a plain-language explanation of every failure and warning: what is wrong, why it matters, and how to fix it.
+
+The easiest setup is Groq: create a `.env` file next to where you run the command:
 
 ```bash
-export LIVECHECK_AI_KEY="sk-..."                      # or OPENAI_API_KEY
-export LIVECHECK_AI_BASE_URL="https://api.openai.com/v1"   # default
-export LIVECHECK_AI_MODEL="gpt-4o-mini"               # default
+GROQ_API_KEY=gsk_...
+```
 
+That is it - the key is auto-detected and routed to Groq's API with `llama-3.3-70b-versatile`. The CLI loads `.env` from your current working directory.
+
+Any OpenAI-compatible provider also works via environment variables:
+
+| Variable | Purpose |
+| -------- | ------- |
+| `LIVECHECK_AI_KEY` | Overrides provider detection |
+| `GROQ_API_KEY` | Enables Groq (auto-routed) |
+| `OPENAI_API_KEY` | OpenAI-compatible fallback |
+| `LIVECHECK_AI_BASE_URL` | Custom endpoint (default: provider-specific) |
+| `LIVECHECK_AI_MODEL` | Model override (default: provider-specific) |
+
+```bash
 npx livecheck-audit https://yoursite.com --ai
 ```
 

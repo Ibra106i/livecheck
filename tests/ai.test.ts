@@ -52,18 +52,35 @@ describe('resolveAiConfig', () => {
 
   it('throws without any API key', () => {
     delete process.env.LIVECHECK_AI_KEY;
+    delete process.env.GROQ_API_KEY;
     delete process.env.OPENAI_API_KEY;
     expect(() => resolveAiConfig()).toThrow(/no API key/);
   });
 
-  it('prefers LIVECHECK_AI_KEY over OPENAI_API_KEY', () => {
+  it('prefers LIVECHECK_AI_KEY over GROQ and OPENAI keys', () => {
     process.env.LIVECHECK_AI_KEY = 'live-key';
+    process.env.GROQ_API_KEY = 'groq-key';
     process.env.OPENAI_API_KEY = 'openai-key';
-    expect(resolveAiConfig().apiKey).toBe('live-key');
+    const config = resolveAiConfig();
+    expect(config.apiKey).toBe('live-key');
+    expect(config.baseUrl).toBe('https://api.openai.com/v1');
+  });
+
+  it('routes GROQ_API_KEY to the Groq endpoint with a Groq model', () => {
+    delete process.env.LIVECHECK_AI_KEY;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.LIVECHECK_AI_BASE_URL;
+    delete process.env.LIVECHECK_AI_MODEL;
+    process.env.GROQ_API_KEY = 'gsk_test';
+    const config = resolveAiConfig();
+    expect(config.apiKey).toBe('gsk_test');
+    expect(config.baseUrl).toBe('https://api.groq.com/openai/v1');
+    expect(config.model).toBe('llama-3.3-70b-versatile');
   });
 
   it('applies custom base url and model', () => {
     delete process.env.LIVECHECK_AI_KEY;
+    delete process.env.GROQ_API_KEY;
     process.env.OPENAI_API_KEY = 'k';
     process.env.LIVECHECK_AI_BASE_URL = 'https://openrouter.ai/api/v1/';
     process.env.LIVECHECK_AI_MODEL = 'llama-3';

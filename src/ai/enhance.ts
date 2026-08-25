@@ -11,17 +11,28 @@ interface ChatResponse {
   choices?: Array<{ message?: { content?: string } }>;
 }
 
+const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
+const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+
 export function resolveAiConfig(): AiConfig {
-  const apiKey = process.env.LIVECHECK_AI_KEY ?? process.env.OPENAI_API_KEY;
+  const apiKey =
+    process.env.LIVECHECK_AI_KEY ?? process.env.GROQ_API_KEY ?? process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error(
-      'no API key found. Set LIVECHECK_AI_KEY (or OPENAI_API_KEY). Optional: LIVECHECK_AI_BASE_URL, LIVECHECK_AI_MODEL'
+      'no API key found. Put GROQ_API_KEY=... in a .env file next to where you run the command (or set LIVECHECK_AI_KEY / OPENAI_API_KEY)'
     );
   }
+
+  const isGroq = apiKey === process.env.GROQ_API_KEY && !process.env.LIVECHECK_AI_KEY;
+  const defaultBaseUrl = process.env.LIVECHECK_AI_BASE_URL ?? (isGroq ? GROQ_BASE_URL : OPENAI_BASE_URL);
+  const defaultModel =
+    process.env.LIVECHECK_AI_MODEL ?? (isGroq ? GROQ_DEFAULT_MODEL : 'gpt-4o-mini');
+
   return {
     apiKey,
-    baseUrl: (process.env.LIVECHECK_AI_BASE_URL ?? 'https://api.openai.com/v1').replace(/\/$/, ''),
-    model: process.env.LIVECHECK_AI_MODEL ?? 'gpt-4o-mini',
+    baseUrl: defaultBaseUrl.replace(/\/$/, ''),
+    model: defaultModel,
   };
 }
 
