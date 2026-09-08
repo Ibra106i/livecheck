@@ -1,0 +1,54 @@
+========================================
+LINKEDIN POST
+========================================
+
+So I keep building sites with AI tools and they always look done. Then I deploy and something's broken - SSL cert expiring, mobile layout overflowing, missing meta tags. The usual suspects.
+
+Got tired of manually checking each thing, so I built Livecheck.
+
+It's a CLI tool. You point it at any deployed site:
+
+npx livechecks https://yoursite.com
+
+And it runs a checklist - DNS, SSL, headers, SEO, mobile responsiveness, page speed - then gives you a score out of 100. You know exactly what's broken before your users find it.
+
+The stack is TypeScript with Playwright for real browser rendering and Cheerio for HTML parsing. One thing I was deliberate about: the AI analysis feature only sends check results to the provider, never your page content or credentials. Privacy first.
+
+Also the exit code is 0 when clean, 1 when something fails. So it just works in CI - no custom wrapper needed.
+
+Live at livechecks.netlify.app. Run it against your next deploy and see what comes back.
+
+
+========================================
+X POST (SHORT)
+========================================
+
+Built Livecheck - a CLI that audits any deployed website in one command.
+
+Run npx livechecks https://yoursite.com and it checks SSL, DNS, security headers, SEO tags, mobile layout, page speed. Gives you a score out of 100 and tells you exactly what to fix.
+
+Stack: TypeScript, Playwright, Cheerio. Works in CI too - exit code 0 or 1.
+
+Live at livechecks.netlify.app
+
+
+========================================
+X POST (THREAD OPENER)
+========================================
+
+Every AI-built site I deployed had the same problem: looked perfect locally, broke at launch. So I built a one-command auditor that catches it all before users do
+
+
+========================================
+POSTING NOTES
+========================================
+
+Best time to post:
+LinkedIn: Tue-Thu, 8-10am or 12-1pm
+X: any day, 9am-12pm or 7-9pm
+
+Visual suggestion:
+Screen recording of the terminal running npx livechecks https://some-site.com and scrolling through the PASS/WARN/FAIL output with the final score.
+
+Optional follow-up after 1 hour:
+"Just ran it against a client site I deployed last week. Score: 67. Turns out the viewport meta tag was missing and HSTS wasn't set. Fixed both in 5 minutes."

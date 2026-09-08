@@ -118,6 +118,17 @@ export const seoCheck: Check = {
   group: 'seo',
   requiresBrowser: false,
   async run(ctx: CheckContext): Promise<CheckResult[]> {
+    if (ctx.page.isBlocked) {
+      return [
+        {
+          id: 'seo-blocked',
+          title: 'SEO & Metadata',
+          group: 'seo',
+          status: 'blocked',
+          detail: 'Scan incomplete — anti-bot protection detected, content checks skipped.',
+        },
+      ];
+    }
     if (!ctx.page.html.trim()) {
       return [
         {

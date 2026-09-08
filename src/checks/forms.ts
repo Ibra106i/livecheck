@@ -1,8 +1,45 @@
+import dns from 'node:dns/promises';
+import net from 'node:net';
+import pc from 'picocolors';
 import type { Check, CheckContext, CheckResult, PageLike } from '../core/types';
+import { isRestrictedIpv4, isRestrictedIpv6 } from '../core/ssrf';
 
 interface FormInspection {
   total: number;
   unlabeled: number;
+}
+
+interface BrowserContextWithRoute {
+  route(pattern: string, handler: (route: { request: () => { url: () => string }; abort: (errorCode?: string) => void; continue: () => void }) => Promise<void>): Promise<void>;
+}
+
+async function setupSsrfRouteBlocking(context: BrowserContextWithRoute) {
+  await context.route('**/*', async (route) => {
+    const target = new URL(route.request().url());
+    const hostname = target.hostname.startsWith('[') && target.hostname.endsWith(']')
+      ? target.hostname.slice(1, -1)
+      : target.hostname;
+    if (net.isIP(hostname)) {
+      const restricted = net.isIP(hostname) === 6
+        ? isRestrictedIpv6(hostname)
+        : isRestrictedIpv4(hostname);
+      if (restricted) {
+        return route.abort('blockedbyclient');
+      }
+    }
+    try {
+      const addresses = await dns.lookup(target.hostname, { all: true, verbatim: true });
+      const allRestricted = addresses.every((a) =>
+        a.family === 4 ? isRestrictedIpv4(a.address) : isRestrictedIpv6(a.address)
+      );
+      if (allRestricted) {
+        return route.abort('blockedbyclient');
+      }
+    } catch {
+      return route.abort('failed');
+    }
+    return route.continue();
+  });
 }
 
 export const formsCheck: Check = {
@@ -11,6 +48,18 @@ export const formsCheck: Check = {
   group: 'forms',
   requiresBrowser: true,
   async run(ctx: CheckContext): Promise<CheckResult[]> {
+    if (ctx.page.isBlocked) {
+      return [
+        {
+          id: 'forms-blocked',
+          title: 'Forms',
+          group: 'forms',
+          status: 'blocked',
+          detail: 'Scan incomplete — anti-bot protection detected, content checks skipped.',
+        },
+      ];
+    }
+
     if (!ctx.browser) {
       return [
         {
@@ -24,6 +73,7 @@ export const formsCheck: Check = {
     }
 
     const context = await ctx.browser.newContext();
+    await setupSsrfRouteBlocking(context);
     const page = await context.newPage();
     try {
       await page.goto(ctx.url.toString(), { waitUntil: 'load', timeout: ctx.timeoutMs });
@@ -127,7 +177,7 @@ export const formsCheck: Check = {
       ];
 
       if (ctx.probeForms) {
-        results.push(await probeFirstForm(page, ctx.timeoutMs));
+        results.push(await probeFirstForm(page, ctx.timeoutMs, ctx.url.toString()));
       }
 
       return results;
@@ -143,11 +193,14 @@ const FILL_VALUES: Array<[string, string]> = [
   ['tel', '5551234567'],
 ];
 
-async function probeFirstForm(page: PageLike, timeoutMs: number): Promise<CheckResult> {
+async function probeFirstForm(page: PageLike, timeoutMs: number, pageUrl: string): Promise<CheckResult> {
   const base = { title: 'Active submission probe', group: 'forms' as const };
   try {
     const form = page.locator('form').first();
     const action = ((await form.getAttribute('action')) ?? '').trim();
+    const formUrl = action.startsWith('http') ? action : new URL(action || '/', pageUrl).toString();
+    console.log(pc.yellow(`livecheck: Submitting form to ${formUrl}`));
+
     if (/^mailto:/i.test(action)) {
       return {
         ...base,

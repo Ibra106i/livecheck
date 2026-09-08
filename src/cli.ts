@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { enhanceReport } from './ai/enhance';
@@ -16,6 +18,7 @@ interface CliOptions {
   json?: boolean;
   out?: string;
   probeForms?: boolean;
+  iHavePermission?: boolean;
   lighthouse?: boolean;
   ai?: boolean;
   timeout?: string;
@@ -33,14 +36,26 @@ program
   .option('--json', 'print the report as JSON instead of the terminal view')
   .option('-o, --out <dir>', 'save markdown and JSON reports to this directory')
   .option('--probe-forms', 'actively submit the first form found (default: passive analysis)')
+  .option('--i-have-permission', 'confirm you have permission to submit forms on the target site (required for --probe-forms in non-interactive environments)')
   .option('--lighthouse', 'include a Lighthouse performance score if lighthouse is installed')
   .option('--ai', 'add a plain-language AI analysis of the results (requires LIVECHECK_AI_KEY or OPENAI_API_KEY)')
   .option('-t, --timeout <ms>', 'per-check timeout in milliseconds', '20000')
   .action(async (urlArg: string, options: CliOptions) => {
     const timeoutMs = Number(options.timeout ?? 20000);
+
+    // Handle --probe-forms confirmation gate
+    let shouldProbeForms = options.probeForms ?? false;
+    if (shouldProbeForms) {
+      const confirmed = await confirmFormProbing(options.iHavePermission ?? false);
+      if (!confirmed) {
+        shouldProbeForms = false;
+        console.warn(pc.yellow('livecheck: Form probing skipped — no confirmation given. Use --i-have-permission to acknowledge.'));
+      }
+    }
+
     try {
       const report = await runAudit(urlArg, {
-        probeForms: options.probeForms ?? false,
+        probeForms: shouldProbeForms,
         useLighthouse: options.lighthouse ?? false,
         timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 20000,
       });
@@ -95,6 +110,26 @@ function safeHost(url: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+async function confirmFormProbing(explicitFlag: boolean): Promise<boolean> {
+  if (explicitFlag) {
+    return true;
+  }
+
+  if (!input.isTTY) {
+    return false;
+  }
+
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = await rl.question(
+      pc.yellow('This will submit LIVE forms on the target site. Continue only if you have permission to test it. Type "yes" to continue: ')
+    );
+    return answer.trim().toLowerCase() === 'yes';
+  } finally {
+    rl.close();
+  }
 }
 
 await program.parseAsync(process.argv);

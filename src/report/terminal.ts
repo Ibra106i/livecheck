@@ -12,6 +12,8 @@ function statusLabel(status: CheckStatus): string {
       return pc.yellow('WARN');
     case 'skip':
       return pc.dim('SKIP');
+    case 'blocked':
+      return pc.magenta('BLOCKED');
   }
 }
 
@@ -40,9 +42,9 @@ export function renderTerminal(report: AuditReport): string[] {
     lines.push('');
   }
 
-  const { pass, fail, warn, skip } = report.summary;
+  const { pass, fail, warn, skip, blocked } = report.summary;
   lines.push(
-    `  ${pc.green(`${pass} passed`)}  ${pc.red(`${fail} failed`)}  ${pc.yellow(`${warn} warnings`)}  ${pc.dim(`${skip} skipped`)}`
+    `  ${pc.green(`${pass} passed`)}  ${pc.red(`${fail} failed`)}  ${pc.yellow(`${warn} warnings`)}  ${pc.dim(`${skip} skipped`)}  ${pc.magenta(`${blocked} blocked`)}`
   );
   lines.push(pc.dim(`  Checked ${report.startedAt}`));
 

@@ -6,6 +6,7 @@ const STATUS_MARKS: Record<CheckStatus, string> = {
   fail: '**FAIL**',
   warn: 'WARN',
   skip: 'SKIP',
+  blocked: 'BLOCKED',
 };
 
 export function renderMarkdown(report: AuditReport): string {
@@ -18,7 +19,7 @@ export function renderMarkdown(report: AuditReport): string {
   lines.push(`- **Checked at:** ${report.startedAt}`);
   lines.push(`- **Score:** ${report.score}/100 — ${scoreVerdict(report.score)}`);
   lines.push(
-    `- **Summary:** ${report.summary.pass} passed, ${report.summary.fail} failed, ${report.summary.warn} warnings, ${report.summary.skip} skipped`
+    `- **Summary:** ${report.summary.pass} passed, ${report.summary.fail} failed, ${report.summary.warn} warnings, ${report.summary.skip} skipped, ${report.summary.blocked} blocked`
   );
   lines.push('');
 

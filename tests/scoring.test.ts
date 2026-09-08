@@ -40,6 +40,6 @@ describe('computeScore', () => {
 describe('summarize', () => {
   it('counts each status', () => {
     const summary = summarize([make('pass'), make('fail'), make('warn'), make('skip')]);
-    expect(summary).toEqual({ pass: 1, fail: 1, warn: 1, skip: 1 });
+    expect(summary).toEqual({ pass: 1, fail: 1, warn: 1, skip: 1, blocked: 0 });
   });
 });

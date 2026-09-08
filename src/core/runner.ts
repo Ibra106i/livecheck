@@ -47,6 +47,17 @@ export async function runAudit(rawUrl: string, opts: AuditOptions): Promise<Audi
 
   try {
     for (const check of CHECKS) {
+      if (page.isBlocked && check.requiresBrowser) {
+        results.push({
+          id: `${check.id}-blocked`,
+          title: check.title,
+          group: check.group,
+          status: 'blocked',
+          detail: 'Scan incomplete — anti-bot protection detected, content checks skipped.',
+        });
+        continue;
+      }
+
       try {
         results.push(...(await check.run(ctx)));
       } catch (error) {
@@ -76,13 +87,30 @@ export async function runAudit(rawUrl: string, opts: AuditOptions): Promise<Audi
 async function safeFetch(url: URL, timeoutMs: number): Promise<FetchedPage> {
   try {
     return await fetchPage(url, timeoutMs);
-  } catch {
-    return { status: 0, headers: new Headers(), html: '', ttfbMs: 0 };
+  } catch (error) {
+    const isSsrfBlock = error instanceof Error && error.message.startsWith('SSRF_BLOCKED');
+    return {
+      status: 0,
+      headers: new Headers(),
+      html: '',
+      ttfbMs: 0,
+      ...(isSsrfBlock ? { blockReason: 'restricted-network-address' as const } : {}),
+    };
   }
 }
 
 function reachabilityResult(url: string, page: FetchedPage): CheckResult {
   if (page.status === 0) {
+    if (page.blockReason === 'restricted-network-address') {
+      return {
+        id: 'site-reachable',
+        title: 'Site reachable',
+        group: 'general',
+        status: 'fail',
+        weight: 2,
+        detail: 'Scan blocked — target resolves to a private or restricted network address',
+      };
+    }
     return {
       id: 'site-reachable',
       title: 'Site reachable',

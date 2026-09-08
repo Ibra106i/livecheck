@@ -21,7 +21,7 @@ const report: AuditReport = {
   startedAt: '2026-01-01T00:00:00Z',
   finishedAt: '2026-01-01T00:01:00Z',
   score: 80,
-  summary: { pass: 1, fail: 2, warn: 2, skip: 1 },
+  summary: { pass: 1, fail: 2, warn: 2, skip: 1, blocked: 0 },
   results: [
     make('warn-light', 'warn', 1),
     make('pass-a', 'pass'),

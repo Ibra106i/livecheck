@@ -4,7 +4,7 @@ export function computeScore(results: CheckResult[]): number {
   let earned = 0;
   let possible = 0;
   for (const result of results) {
-    if (result.status === 'skip') continue;
+    if (result.status === 'skip' || result.status === 'blocked') continue;
     const weight = result.weight ?? 1;
     possible += weight;
     if (result.status === 'pass') earned += weight;
@@ -15,7 +15,13 @@ export function computeScore(results: CheckResult[]): number {
 }
 
 export function summarize(results: CheckResult[]): ReportSummary {
-  const summary: ReportSummary = { pass: 0, fail: 0, warn: 0, skip: 0 };
-  for (const result of results) summary[result.status] += 1;
+  const summary: ReportSummary = { pass: 0, fail: 0, warn: 0, skip: 0, blocked: 0 };
+  for (const result of results) {
+    if (result.status === 'blocked') {
+      summary.blocked += 1;
+    } else {
+      summary[result.status] += 1;
+    }
+  }
   return summary;
 }

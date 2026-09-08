@@ -46,6 +46,18 @@ export const speedCheck: Check = {
   group: 'speed',
   requiresBrowser: true,
   async run(ctx: CheckContext): Promise<CheckResult[]> {
+    if (ctx.page.isBlocked) {
+      return [
+        {
+          id: 'speed-blocked',
+          title: 'Speed',
+          group: 'speed',
+          status: 'blocked',
+          detail: 'Scan incomplete — anti-bot protection detected, content checks skipped.',
+        },
+      ];
+    }
+
     if (!ctx.browser) {
       return [
         {

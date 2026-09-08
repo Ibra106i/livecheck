@@ -1,4 +1,5 @@
 import type { FetchedPage } from './types';
+import { fetchPageSafe } from './ssrf';
 
 export function normalizeUrl(raw: string): URL {
   const trimmed = raw.trim();
@@ -6,16 +7,8 @@ export function normalizeUrl(raw: string): URL {
   return new URL(withProtocol);
 }
 
+export { detectBotChallenge } from './ssrf';
+
 export async function fetchPage(url: URL, timeoutMs: number): Promise<FetchedPage> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const started = Date.now();
-  try {
-    const res = await fetch(url, { signal: controller.signal, redirect: 'follow' });
-    const ttfbMs = Date.now() - started;
-    const html = await res.text();
-    return { status: res.status, headers: res.headers, html, ttfbMs };
-  } finally {
-    clearTimeout(timer);
-  }
+  return fetchPageSafe(url, timeoutMs);
 }

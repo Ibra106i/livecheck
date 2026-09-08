@@ -52,6 +52,7 @@ const GROUP_ORDER: Record<string, number> = {
 const STATUS_RANK: Record<string, number> = {
   fail: 0,
   warn: 1,
+  blocked: 2,
 };
 
 export function sortFindings(results: CheckResult[]): CheckResult[] {
@@ -67,6 +68,7 @@ export function sortFindings(results: CheckResult[]): CheckResult[] {
 
 export function buildPrompt(report: AuditReport): PromptBundle {
   const findings = sortFindings(report.results);
+  const blocked = report.results.filter((r) => r.status === 'blocked');
 
   const findingsBlock = findings.length
     ? findings
@@ -88,14 +90,22 @@ export function buildPrompt(report: AuditReport): PromptBundle {
     `Overall score: ${report.score}/100`,
     `Summary counts: ${report.summary.pass} passed, ${report.summary.fail} failed, ${report.summary.warn} warnings.`,
     '',
-    'Findings, already ordered by priority - keep this order and numbering:',
-    findingsBlock,
-    '',
-    'Checks that passed:',
-    passedBlock,
-    '',
-    'Write the report now using the exact template.',
-  ].join('\n');
+  ];
 
-  return { system: SYSTEM_PROMPT, user };
+  if (blocked.length > 0) {
+    user.push(
+      `NOTE: ${blocked.length} check group(s) could not be completed because anti-bot protection was detected. The score reflects only completed checks.`
+    );
+    user.push('');
+  }
+
+  user.push('Findings, already ordered by priority - keep this order and numbering:');
+  user.push(findingsBlock);
+  user.push('');
+  user.push('Checks that passed:');
+  user.push(passedBlock);
+  user.push('');
+  user.push('Write the report now using the exact template.');
+
+  return { system: SYSTEM_PROMPT, user: user.join('\n') };
 }

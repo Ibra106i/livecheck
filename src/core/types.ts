@@ -1,4 +1,4 @@
-export type CheckStatus = 'pass' | 'fail' | 'warn' | 'skip';
+export type CheckStatus = 'pass' | 'fail' | 'warn' | 'skip' | 'blocked';
 
 export type CheckGroup =
   | 'general'
@@ -24,6 +24,8 @@ export interface FetchedPage {
   headers: Headers;
   html: string;
   ttfbMs: number;
+  isBlocked?: boolean;
+  blockReason?: 'restricted-network-address';
 }
 
 export interface CheckContext {
@@ -43,6 +45,7 @@ export interface BrowserLike {
 export interface BrowserContextLike {
   newPage(): Promise<PageLike>;
   close(): Promise<void>;
+  route(pattern: string, handler: (route: { request: () => { url: () => string }; abort: (errorCode?: string) => void; continue: () => void }) => Promise<void>): Promise<void>;
 }
 
 export interface PageLike {
@@ -70,6 +73,7 @@ export interface ReportSummary {
   fail: number;
   warn: number;
   skip: number;
+  blocked: number;
 }
 
 export interface AuditOptions {
