@@ -1,0 +1,260 @@
+{
+  "nodes": [
+    {
+      "id": "readme_md",
+      "label": "React + TypeScript + Vite Template Documentation",
+      "file_type": "document",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_md_react_compiler",
+      "label": "React Compiler",
+      "file_type": "rationale",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\README.md",
+      "source_location": "README.md:10",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Not enabled by default due to impact on dev and build performance; opt-in for production apps."
+    },
+    {
+      "id": "readme_md_eslint_config",
+      "label": "ESLint Configuration",
+      "file_type": "concept",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\README.md",
+      "source_location": "README.md:14",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_html",
+      "label": "Livecheck App Entry HTML",
+      "file_type": "document",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_html_livecheck_desc",
+      "label": "Livecheck Product Description",
+      "file_type": "concept",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:7",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_html_arena_recording",
+      "label": "Arena Session Recording",
+      "file_type": "code",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:12-33",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_html_arena_views",
+      "label": "Arena Page Views Tracking",
+      "file_type": "code",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:34",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "index_html_element_picker",
+      "label": "Arena Element Picker",
+      "file_type": "code",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:39-695",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_favicon_svg",
+      "label": "Livecheck Favicon",
+      "file_type": "image",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\public\\favicon.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "public_vite_svg",
+      "label": "Vite Logo",
+      "file_type": "image",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\public\\vite.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "src_assets_react_svg",
+      "label": "React Logo",
+      "file_type": "image",
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\src\\assets\\react.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "readme_md",
+      "target": "readme_md_react_compiler",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\README.md",
+      "source_location": "README.md:10",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_md",
+      "target": "readme_md_eslint_config",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\README.md",
+      "source_location": "README.md:14",
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "index_html_livecheck_desc",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:7",
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "index_html_arena_recording",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:12",
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "index_html_arena_views",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:34",
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "index_html_element_picker",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:39",
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "public_favicon_svg",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": "index.html:5",
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "public_vite_svg",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "index_html",
+      "target": "src_assets_react_svg",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "index_html_arena_recording",
+      "target": "index_html_arena_views",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "index_html_element_picker",
+      "target": "index_html_livecheck_desc",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "arena_tracking_system",
+      "label": "Arena Analytics & Recording System",
+      "nodes": ["index_html_arena_recording", "index_html_arena_views", "index_html_element_picker"],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html"
+    },
+    {
+      "id": "livecheck_identity",
+      "label": "Livecheck Brand Identity",
+      "nodes": ["index_html_livecheck_desc", "public_favicon_svg"],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "D:\\Ibrahim106\\Desktop\\livecheck\\website\\index.html"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

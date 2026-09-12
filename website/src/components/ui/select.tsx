@@ -8,14 +8,14 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
       <select
         ref={ref}
         className={cn(
-          'flex h-10 w-full appearance-none rounded-lg border border-zinc-700 bg-zinc-900/80 px-3.5 pr-9 py-2 text-sm text-zinc-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500/60',
+          'flex h-11 w-full appearance-none rounded-xl border border-border bg-bg-elevated px-4 pr-10 py-2.5 text-sm text-fg transition-all duration-200 focus-ring disabled:opacity-50 disabled:cursor-not-allowed hover:border-border-hover',
           className
         )}
         {...props}
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" />
     </div>
   )
 );

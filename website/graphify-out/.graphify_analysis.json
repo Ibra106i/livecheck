@@ -1,0 +1,314 @@
+{
+  "communities": {
+    "0": [
+      "index_html",
+      "index_html_arena_recording",
+      "index_html_arena_views",
+      "public_favicon_svg",
+      "public_vite_svg",
+      "src_assets_react_svg"
+    ],
+    "1": [
+      "readme_md",
+      "readme_md_eslint_config",
+      "readme_md_react_compiler"
+    ],
+    "2": [
+      "index_html_element_picker",
+      "index_html_livecheck_desc"
+    ],
+    "3": [
+      "api_db_wake_triggerrestore"
+    ],
+    "4": [
+      "src_components_appshell_appshell"
+    ],
+    "5": [
+      "src_components_footer_footer"
+    ],
+    "6": [
+      "src_components_logo_logo"
+    ],
+    "7": [
+      "src_components_statusbadge_statusbadge"
+    ],
+    "8": [
+      "src_components_ui_badge_badge"
+    ],
+    "9": [
+      "src_components_ui_button_buttonprops"
+    ],
+    "10": [
+      "src_components_ui_card_card"
+    ],
+    "11": [
+      "src_components_ui_card_cardcontent"
+    ],
+    "12": [
+      "src_components_ui_card_carddescription"
+    ],
+    "13": [
+      "src_components_ui_card_cardfooter"
+    ],
+    "14": [
+      "src_components_ui_card_cardheader"
+    ],
+    "15": [
+      "src_components_ui_card_cardtitle"
+    ],
+    "16": [
+      "src_components_ui_dialog_dialogcontent"
+    ],
+    "17": [
+      "src_components_ui_dialog_dialogdescription"
+    ],
+    "18": [
+      "src_components_ui_dialog_dialogheader"
+    ],
+    "19": [
+      "src_components_ui_dialog_dialogtitle"
+    ],
+    "20": [
+      "src_components_ui_separator_separator"
+    ],
+    "21": [
+      "src_components_ui_table_table"
+    ],
+    "22": [
+      "src_components_ui_table_tablebody"
+    ],
+    "23": [
+      "src_components_ui_table_tablecell"
+    ],
+    "24": [
+      "src_components_ui_table_tablehead"
+    ],
+    "25": [
+      "src_components_ui_table_tableheader"
+    ],
+    "26": [
+      "src_components_ui_table_tablerow"
+    ],
+    "27": [
+      "src_context_projectscontext_projectsprovider"
+    ],
+    "28": [
+      "src_context_projectscontext_useprojects"
+    ],
+    "29": [
+      "src_lib_audit_runpreintakeaudit"
+    ],
+    "30": [
+      "src_lib_certificate_buildcertificatehtml"
+    ],
+    "31": [
+      "src_lib_certificate_downloadcertificate"
+    ],
+    "32": [
+      "src_lib_types_auditverdict"
+    ],
+    "33": [
+      "src_lib_types_fixitem"
+    ],
+    "34": [
+      "src_lib_types_fixkey"
+    ],
+    "35": [
+      "src_lib_types_fixprogress"
+    ],
+    "36": [
+      "src_lib_types_fixstatus"
+    ],
+    "37": [
+      "src_lib_types_intakeformdata"
+    ],
+    "38": [
+      "src_lib_types_patchlogentry"
+    ],
+    "39": [
+      "src_lib_types_project"
+    ],
+    "40": [
+      "src_lib_types_projectstatus"
+    ],
+    "41": [
+      "src_lib_types_whitelabelsettings"
+    ],
+    "42": [
+      "src_lib_utils_cn"
+    ],
+    "43": [
+      "src_lib_utils_formatcurrency"
+    ],
+    "44": [
+      "src_lib_utils_formatdate"
+    ],
+    "45": [
+      "src_lib_utils_formatdatetime"
+    ],
+    "46": [
+      "src_lib_utils_timeago"
+    ],
+    "47": [
+      "src_lib_utils_uid"
+    ],
+    "48": [
+      "src_pages_notfound_notfound"
+    ]
+  },
+  "cohesion": {
+    "0": 0.4,
+    "1": 0.6666666666666666,
+    "2": 1.0,
+    "3": 1.0,
+    "4": 1.0,
+    "5": 1.0,
+    "6": 1.0,
+    "7": 1.0,
+    "8": 1.0,
+    "9": 1.0,
+    "10": 1.0,
+    "11": 1.0,
+    "12": 1.0,
+    "13": 1.0,
+    "14": 1.0,
+    "15": 1.0,
+    "16": 1.0,
+    "17": 1.0,
+    "18": 1.0,
+    "19": 1.0,
+    "20": 1.0,
+    "21": 1.0,
+    "22": 1.0,
+    "23": 1.0,
+    "24": 1.0,
+    "25": 1.0,
+    "26": 1.0,
+    "27": 1.0,
+    "28": 1.0,
+    "29": 1.0,
+    "30": 1.0,
+    "31": 1.0,
+    "32": 1.0,
+    "33": 1.0,
+    "34": 1.0,
+    "35": 1.0,
+    "36": 1.0,
+    "37": 1.0,
+    "38": 1.0,
+    "39": 1.0,
+    "40": 1.0,
+    "41": 1.0,
+    "42": 1.0,
+    "43": 1.0,
+    "44": 1.0,
+    "45": 1.0,
+    "46": 1.0,
+    "47": 1.0,
+    "48": 1.0
+  },
+  "gods": [
+    {
+      "id": "index_html",
+      "label": "Livecheck App Entry HTML",
+      "degree": 7
+    },
+    {
+      "id": "readme_md",
+      "label": "React + TypeScript + Vite Template Documentation",
+      "degree": 2
+    },
+    {
+      "id": "index_html_livecheck_desc",
+      "label": "Livecheck Product Description",
+      "degree": 2
+    },
+    {
+      "id": "index_html_arena_recording",
+      "label": "Arena Session Recording",
+      "degree": 2
+    },
+    {
+      "id": "index_html_arena_views",
+      "label": "Arena Page Views Tracking",
+      "degree": 2
+    },
+    {
+      "id": "index_html_element_picker",
+      "label": "Arena Element Picker",
+      "degree": 2
+    },
+    {
+      "id": "readme_md_react_compiler",
+      "label": "React Compiler",
+      "degree": 1
+    },
+    {
+      "id": "readme_md_eslint_config",
+      "label": "ESLint Configuration",
+      "degree": 1
+    },
+    {
+      "id": "public_favicon_svg",
+      "label": "Livecheck Favicon",
+      "degree": 1
+    },
+    {
+      "id": "public_vite_svg",
+      "label": "Vite Logo",
+      "degree": 1
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Livecheck App Entry HTML",
+      "target": "Vite Logo",
+      "source_files": [
+        "index.html",
+        "public/vite.svg"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (doc ↔ image); connects across different repos/directories; peripheral node `Vite Logo` unexpectedly reaches hub `Livecheck App Entry HTML`"
+    },
+    {
+      "source": "Livecheck App Entry HTML",
+      "target": "React Logo",
+      "source_files": [
+        "index.html",
+        "src/assets/react.svg"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; crosses file types (doc ↔ image); connects across different repos/directories; peripheral node `React Logo` unexpectedly reaches hub `Livecheck App Entry HTML`"
+    },
+    {
+      "source": "Livecheck App Entry HTML",
+      "target": "Livecheck Favicon",
+      "source_files": [
+        "index.html",
+        "public/favicon.svg"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "crosses file types (doc ↔ image); connects across different repos/directories; peripheral node `Livecheck Favicon` unexpectedly reaches hub `Livecheck App Entry HTML`"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `Livecheck App Entry HTML` connect `Community 0` to `Community 2`?",
+      "why": "High betweenness centrality (0.012) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 2 inferred relationships involving `Livecheck App Entry HTML` (e.g. with `Vite Logo` and `React Logo`) actually correct?",
+      "why": "`Livecheck App Entry HTML` has 2 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `triggerRestore`, `AppShell`, `Footer` to the rest of the system?",
+      "why": "51 weakly-connected nodes found - possible documentation gaps or missing edges."
+    }
+  ]
+}

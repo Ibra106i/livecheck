@@ -1,43 +1,54 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
 
-type Variant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
-type Size = 'default' | 'sm' | 'lg' | 'icon';
+type Variant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link' | 'primary-soft';
+type Size = 'default' | 'sm' | 'lg' | 'xl' | 'icon';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
+  loading?: boolean;
 }
 
 const variantClasses: Record<Variant, string> = {
-  default:
-    'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-[0_0_20px_-4px_rgba(16,185,129,0.5)]',
-  secondary: 'bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700',
-  outline: 'border border-zinc-700 bg-transparent text-zinc-100 hover:bg-zinc-800/60 hover:border-zinc-600',
-  ghost: 'bg-transparent text-zinc-300 hover:bg-zinc-800/60 hover:text-white',
-  destructive: 'bg-red-500/90 text-white hover:bg-red-500',
-  link: 'bg-transparent text-emerald-400 hover:text-emerald-300 underline-offset-4 hover:underline p-0 h-auto',
+  default: 'bg-primary text-bg hover:bg-primary-hover shadow-glow transition-all duration-200',
+  'primary-soft': 'bg-primary-bg text-primary border-primary-border hover:bg-primary/20 hover:border-primary transition-all duration-200',
+  secondary: 'bg-bg-elevated text-fg border-border hover:bg-bg-card hover:border-border-hover transition-all duration-200',
+  outline: 'border-border bg-transparent text-fg hover:bg-bg-elevated hover:border-border-hover transition-all duration-200',
+  ghost: 'bg-transparent text-fg-muted hover:bg-bg-elevated hover:text-fg transition-all duration-200',
+  destructive: 'bg-danger/90 text-bg hover:bg-danger transition-all duration-200',
+  link: 'bg-transparent text-primary hover:text-primary-hover underline-offset-4 hover:underline p-0 h-auto',
 };
 
 const sizeClasses: Record<Size, string> = {
-  default: 'h-10 px-5 text-sm',
-  sm: 'h-8 px-3 text-xs',
+  default: 'h-11 px-5 text-sm',
+  sm: 'h-9 px-3.5 text-xs',
   lg: 'h-12 px-7 text-base',
-  icon: 'h-10 w-10 shrink-0',
+  xl: 'h-14 px-9 text-lg',
+  icon: 'h-11 w-11 shrink-0',
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', ...props }, ref) => (
+  ({ className, variant = 'default', size = 'default', loading, children, disabled, ...props }, ref) => (
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 active:scale-[0.98]',
+        'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap focus-ring active:scale-[0.98]',
         variantClasses[variant],
         sizeClasses[size],
         className
       )}
+      disabled={disabled || loading}
       {...props}
-    />
+    >
+      {loading && (
+        <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      )}
+      {children}
+    </button>
   )
 );
 Button.displayName = 'Button';

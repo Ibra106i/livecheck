@@ -1,28 +1,37 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
 
-type Variant = 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'danger' | 'info';
+type Variant = 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'danger' | 'info' | 'primary';
 
 const variantClasses: Record<Variant, string> = {
-  default: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  secondary: 'bg-zinc-800 text-zinc-300 border-zinc-700',
-  outline: 'bg-transparent text-zinc-300 border-zinc-700',
-  success: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  warning: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-  danger: 'bg-red-500/10 text-red-400 border-red-500/30',
-  info: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+  default: 'bg-primary-bg text-primary border-primary-border',
+  primary: 'bg-primary/15 text-primary border-primary/30',
+  secondary: 'bg-bg-elevated text-fg-muted border-border',
+  outline: 'bg-transparent text-fg-muted border-border',
+  success: 'bg-success-bg text-success border-success-border',
+  warning: 'bg-warning-bg text-warning border-warning-border',
+  danger: 'bg-danger-bg text-danger border-danger-border',
+  info: 'bg-accent-bg text-accent border-accent-border',
 };
 
 export function Badge({
   className,
   variant = 'default',
+  size = 'default',
   ...props
-}: React.HTMLAttributes<HTMLSpanElement> & { variant?: Variant }) {
+}: React.HTMLAttributes<HTMLSpanElement> & { variant?: Variant; size?: 'default' | 'sm' | 'lg' }) {
+  const sizeClasses = {
+    default: 'px-3 py-1 text-xs',
+    sm: 'px-2.5 py-0.5 text-[10px]',
+    lg: 'px-4 py-1.5 text-sm',
+  };
+
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap',
+        'inline-flex items-center gap-1.5 rounded-full border font-medium whitespace-nowrap transition-all duration-200',
         variantClasses[variant],
+        sizeClasses[size],
         className
       )}
       {...props}

@@ -10,13 +10,15 @@ const CONFIG: Record<ProjectStatus, { label: string; variant: 'danger' | 'warnin
   delivered: { label: 'Delivered', variant: 'success', icon: CheckCircle2 },
 };
 
-export function StatusBadge({ status }: { status: ProjectStatus }) {
+export function StatusBadge({ status, size = 'default' }: { status: ProjectStatus; size?: 'default' | 'sm' | 'lg' }) {
   const cfg = CONFIG[status];
   const Icon = cfg.icon;
   return (
-    <Badge variant={cfg.variant}>
-      <Icon className={`h-3 w-3 ${status === 'auto_patching' ? 'animate-spin' : ''}`} />
+    <Badge variant={cfg.variant} size={size}>
+      <Icon className={cn(`h-3.5 w-3.5 ${size === 'sm' && 'h-3 w-3'} ${status === 'auto_patching' ? 'animate-spin' : ''}`)} />
       {cfg.label}
     </Badge>
   );
 }
+
+import { cn } from '../lib/utils';
