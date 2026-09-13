@@ -1,0 +1,221 @@
+name: 'Livecheck Website Audit'
+description: 'Audit any website on every PR — SEO, SSL, headers, mobile, speed. Posts results as PR comment and annotations.'
+author: 'Ibra106i'
+
+inputs:
+  url:
+    description: 'URL of the website to audit'
+    required: true
+  fail-on-failure:
+    description: 'Exit with code 1 if any check fails'
+    required: false
+    default: 'true'
+  min-score:
+    description: 'Fail if score is below this threshold (0 = disabled)'
+    required: false
+    default: '0'
+  probe-forms:
+    description: 'Actively submit the first form found'
+    required: false
+    default: 'false'
+  i-have-permission:
+    description: 'Confirm permission for form submission'
+    required: false
+    default: 'false'
+  lighthouse:
+    description: 'Include Lighthouse performance score'
+    required: false
+    default: 'false'
+  ai:
+    description: 'Enable AI analysis (requires API key)'
+    required: false
+    default: 'false'
+  timeout:
+    description: 'Per-check timeout in milliseconds'
+    required: false
+    default: '20000'
+  post-comment:
+    description: 'Post audit summary as a PR comment'
+    required: false
+    default: 'true'
+  annotations:
+    description: 'Emit ::error annotations for failed checks'
+    required: false
+    default: 'true'
+
+outputs:
+  score:
+    description: 'Audit score (0-100)'
+    value: ${{ steps.audit.outputs.score }}
+  pass:
+    description: 'Whether all checks passed (true/false)'
+    value: ${{ steps.audit.outputs.pass }}
+  report:
+    description: 'Full JSON report'
+    value: ${{ steps.audit.outputs.report }}
+  markdown:
+    description: 'Markdown summary of the audit'
+    value: ${{ steps.markdown.outputs.markdown }}
+  pass-count:
+    description: 'Number of passing checks'
+    value: ${{ steps.audit.outputs.pass_count }}
+  fail-count:
+    description: 'Number of failing checks'
+    value: ${{ steps.audit.outputs.fail_count }}
+  warn-count:
+    description: 'Number of warning checks'
+    value: ${{ steps.audit.outputs.warn_count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Install Playwright Chromium
+      shell: bash
+      run: npx playwright install chromium --with-deps
+
+    - name: Run Livecheck audit
+      id: audit
+      shell: bash
+      env:
+        LIVECHECK_URL: ${{ inputs.url }}
+        LIVECHECK_PROBE_FORMS: ${{ inputs.probe-forms }}
+        LIVECHECK_I_HAVE_PERMISSION: ${{ inputs.i-have-permission }}
+        LIVECHECK_LIGHTHOUSE: ${{ inputs.lighthouse }}
+        LIVECHECK_AI: ${{ inputs.ai }}
+        LIVECHECK_TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        # Build CLI arguments
+        ARGS="$LIVECHECK_URL --json"
+        if [ "$LIVECHECK_PROBE_FORMS" = "true" ]; then
+          ARGS="$ARGS --probe-forms"
+        fi
+        if [ "$LIVECHECK_I_HAVE_PERMISSION" = "true" ]; then
+          ARGS="$ARGS --i-have-permission"
+        fi
+        if [ "$LIVECHECK_LIGHTHOUSE" = "true" ]; then
+          ARGS="$ARGS --lighthouse"
+        fi
+        if [ "$LIVECHECK_AI" = "true" ]; then
+          ARGS="$ARGS --ai"
+        fi
+        if [ -n "$LIVECHECK_TIMEOUT" ] && [ "$LIVECHECK_TIMEOUT" != "20000" ]; then
+          ARGS="$ARGS --timeout $LIVECHECK_TIMEOUT"
+        fi
+
+        # Run audit and capture output + exit code
+        set +e
+        REPORT=$(npx livechecks $ARGS 2>/dev/null)
+        EXIT_CODE=$?
+        set -e
+
+        # Store full report
+        echo "report<<LIVECHECK_EOF" >> "$GITHUB_OUTPUT"
+        echo "$REPORT" >> "$GITHUB_OUTPUT"
+        echo "LIVECHECK_EOF" >> "$GITHUB_OUTPUT"
+
+        # Parse JSON outputs using node
+        SCORE=$(echo "$REPORT" | node -e "
+          const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+          console.log(data.score);
+        ")
+        PASS_COUNT=$(echo "$REPORT" | node -e "
+          const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+          console.log(data.summary.pass);
+        ")
+        FAIL_COUNT=$(echo "$REPORT" | node -e "
+          const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+          console.log(data.summary.fail);
+        ")
+        WARN_COUNT=$(echo "$REPORT" | node -e "
+          const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+          console.log(data.summary.warn);
+        ")
+
+        echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+        echo "pass_count=$PASS_COUNT" >> "$GITHUB_OUTPUT"
+        echo "fail_count=$FAIL_COUNT" >> "$GITHUB_OUTPUT"
+        echo "warn_count=$WARN_COUNT" >> "$GITHUB_OUTPUT"
+
+        # Determine pass/fail
+        if [ "$EXIT_CODE" -eq 0 ]; then
+          echo "pass=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "pass=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        # Check min-score threshold
+        MIN_SCORE="${{ inputs.min-score }}"
+        if [ "$MIN_SCORE" -gt 0 ] && [ "$SCORE" -lt "$MIN_SCORE" ]; then
+          echo "pass=false" >> "$GITHUB_OUTPUT"
+          EXIT_CODE=1
+        fi
+
+        # Emit annotations for failed checks
+        if [ "${{ inputs.annotations }}" = "true" ]; then
+          echo "$REPORT" | node -e "
+            const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+            for (const r of data.results) {
+              if (r.status === 'fail') {
+                const detail = (r.detail || 'No details').replace(/%/g, '%%');
+                console.log('::error title=' + r.title + '::' + r.detail);
+              }
+            }
+          " || true
+        fi
+
+        # Set exit code based on fail-on-failure input
+        if [ "${{ inputs.fail-on-failure }}" = "true" ] && [ "$EXIT_CODE" -ne 0 ]; then
+          exit 1
+        fi
+
+    - name: Generate markdown summary
+      id: markdown
+      shell: bash
+      env:
+        LIVECHECK_REPORT: ${{ steps.audit.outputs.report }}
+      run: |
+        MARKDOWN=$(echo "$LIVECHECK_REPORT" | node -e "
+          const data = JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8'));
+
+          const verdict = data.score >= 90 ? 'Launch-ready'
+            : data.score >= 70 ? 'Minor issues before launch'
+            : data.score >= 50 ? 'Needs work before launch'
+            : 'Not ready for visitors';
+
+          const host = new URL(data.url).hostname;
+
+          let md = '';
+          md += '## Livecheck — ' + host + '\n\n';
+          md += '**Score:** ' + data.score + '/100 — ' + verdict + '\n\n';
+
+          md += '| Status | Count |\n';
+          md += '|--------|-------|\n';
+          md += '| Passed | ' + data.summary.pass + ' |\n';
+          md += '| Failed | ' + data.summary.fail + ' |\n';
+          md += '| Warnings | ' + data.summary.warn + ' |\n';
+          md += '| Skipped | ' + data.summary.skip + ' |\n';
+
+          if (data.summary.fail > 0) {
+            md += '\n### Failed Checks\n\n';
+            for (const r of data.results) {
+              if (r.status === 'fail') {
+                md += '- **' + r.title + '** — ' + (r.detail || 'No details') + '\n';
+              }
+            }
+          }
+
+          md += '\n---\n';
+          md += '_Generated by [Livecheck](https://github.com/Ibra106i/livecheck)_\n';
+
+          console.log(md);
+        ")
+
+        # Escape for GITHUB_OUTPUT
+        echo "markdown<<LIVECHECK_EOF" >> "$GITHUB_OUTPUT"
+        echo "$MARKDOWN" >> "$GITHUB_OUTPUT"
+        echo "LIVECHECK_EOF" >> "$GITHUB_OUTPUT"
