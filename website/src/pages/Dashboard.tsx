@@ -8,15 +8,19 @@ import {
   CheckCircle2,
   ArrowRight,
   ExternalLink,
+  Beaker,
 } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 import { StatusBadge } from '../components/StatusBadge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { useProjects } from '../context/ProjectsContext';
 import { formatCurrency, formatDate } from '../lib/utils';
 import { PACKAGE_PRICE } from '../lib/mockData';
+
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
 export default function Dashboard() {
   const { projects } = useProjects();
@@ -65,6 +69,12 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="mx-auto max-w-7xl">
+        {IS_DEMO && (
+          <div className="mb-6 flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-3 text-sm text-amber-300">
+            <Beaker className="h-4 w-4" />
+            <span><strong>Demo Mode</strong> — All data is simulated. No real scans or patches are being performed.</span>
+          </div>
+        )}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white">Agency Dashboard</h1>
@@ -131,7 +141,12 @@ export default function Dashboard() {
                         {p.siteUrl}
                         <ExternalLink className="h-3 w-3 text-zinc-600" />
                       </div>
-                      <div className="text-xs text-zinc-500">{p.id.toUpperCase()}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                        {p.id.toUpperCase()}
+                        {IS_DEMO && p.id.startsWith('lc-1') && (
+                          <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">Demo</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{p.clientName}</TableCell>
                     <TableCell>
