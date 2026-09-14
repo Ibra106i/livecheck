@@ -1,0 +1,88 @@
+import { createClient } from '@supabase/supabase-js';
+import { scanWebsite, calculateScore } from './scanner';
+
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
+
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    const body = await req.json();
+    const { url, clientName, clientEmail, builderTool, agencyNotes, knownIssues } = body;
+
+    if (!url || !clientName || !clientEmail) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: url, clientName, clientEmail' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    let normalizedUrl = url.trim();
+    if (!normalizedUrl.startsWith('http')) normalizedUrl = 'https://' + normalizedUrl;
+
+    try {
+      new URL(normalizedUrl);
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid URL format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const scanResult = await scanWebsite(normalizedUrl);
+    const score = calculateScore(scanResult);
+
+    const projectId = `lc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const project = {
+      id: projectId,
+      site_url: normalizedUrl,
+      client_name: clientName,
+      client_email: clientEmail,
+      builder_tool: builderTool || 'Unknown',
+      agency_notes: agencyNotes || null,
+      status: 'scanned',
+      complexity_score: score,
+      scan_result: scanResult,
+      known_issues: knownIssues || [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      const { error } = await supabase.from('projects').insert(project);
+      if (error) {
+        console.error('Supabase insert error:', error);
+      }
+    }
+
+    return new Response(JSON.stringify({
+      projectId,
+      score,
+      scanResult,
+      message: 'Scan complete',
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Scan error:', err);
+    return new Response(JSON.stringify({ error: 'Scan failed: ' + message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}

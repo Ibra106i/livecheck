@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -21,14 +21,6 @@ function generateToken(): string {
 function generateHmac(token: string): string {
   if (!hmacSecret) return '';
   return createHmac('sha256', hmacSecret).update(token).digest('hex');
-}
-
-function verifyHmac(token: string, signature: string): boolean {
-  if (!hmacSecret || !signature) return false;
-  const expected = Buffer.from(generateHmac(token));
-  const actual = Buffer.from(signature);
-  if (expected.length !== actual.length) return false;
-  return timingSafeEqual(expected, actual);
 }
 
 function validateUrl(url: string): boolean {

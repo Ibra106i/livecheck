@@ -1,21 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2,
   ScanSearch,
   CheckCircle2,
-  XCircle,
   ArrowRight,
   ArrowLeft,
   Lock,
-  Send,
   Smartphone,
   Search,
   Gauge,
   AlertTriangle,
-  Sparkles,
-  Building2,
 } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { Card, CardContent } from '../components/ui/card';
@@ -25,30 +21,9 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Select } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
-import { Badge } from '../components/ui/badge';
 import { useProjects } from '../context/ProjectsContext';
-import { runPreIntakeAudit } from '../lib/audit';
-import type { AuditVerdict, IntakeFormData } from '../lib/types';
-import { BUILDER_TOOLS, CUSTOM_HOURLY_RATE, FIXES, KNOWN_ISSUE_OPTIONS, PACKAGE_PRICE } from '../lib/mockData';
-
-const FIX_ICONS: Record<string, React.ElementType> = {
-  ssl_dns: Lock,
-  form_routing: Send,
-  mobile_viewport: Smartphone,
-  seo_meta: Search,
-  page_speed: Gauge,
-};
-
-const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
-
-const SCAN_STEPS = [
-  { key: 'ssl_dns', label: IS_DEMO ? 'Simulating SSL check\u2026' : 'Evaluating SSL & DNS scope\u2026' },
-  { key: 'form_routing', label: IS_DEMO ? 'Simulating form check\u2026' : 'Evaluating form routing scope\u2026' },
-  { key: 'mobile_viewport', label: IS_DEMO ? 'Simulating viewport check\u2026' : 'Evaluating mobile viewport scope\u2026' },
-  { key: 'seo_meta', label: IS_DEMO ? 'Simulating SEO check\u2026' : 'Evaluating SEO meta scope\u2026' },
-  { key: 'page_speed', label: IS_DEMO ? 'Simulating speed check\u2026' : 'Evaluating page speed scope\u2026' },
-  { key: 'scope', label: 'Scoring project complexity against package scope\u2026' },
-];
+import type { IntakeFormData } from '../lib/types';
+import { BUILDER_TOOLS, CUSTOM_HOURLY_RATE, KNOWN_ISSUE_OPTIONS } from '../lib/mockData';
 
 const emptyForm: IntakeFormData = {
   siteUrl: '',
@@ -64,7 +39,20 @@ const emptyForm: IntakeFormData = {
   knownIssues: [],
 };
 
-type Step = 'intake' | 'scanning' | 'verdict' | 'scope' | 'done';
+type Step = 'intake' | 'scanning' | 'results' | 'done';
+
+interface ScanResults {
+  projectId: string;
+  score: number;
+  scanResult: {
+    ssl: { valid: boolean; issuer?: string; expiresAt?: string; daysUntilExpiry?: number; error?: string };
+    dns: { resolved: boolean; records?: string[]; error?: string };
+    seo: { hasTitle: boolean; titleLength: number; hasMetaDescription: boolean; metaDescriptionLength: number; hasCanonical: boolean; hasOgTags: boolean; hasRobotsTxt: boolean; issues: string[] };
+    viewport: { hasViewportMeta: boolean; content?: string; issues: string[] };
+    performance: { loadTimeMs?: number; totalSizeBytes?: number; resourceCount?: number; issues: string[] };
+    _forms: { formCount: number; formsWithAction: number; deadEndpoints: string[]; issues: string[] };
+  };
+}
 
 export default function NewAudit() {
   const navigate = useNavigate();
@@ -73,30 +61,17 @@ export default function NewAudit() {
   const [step, setStep] = useState<Step>('intake');
   const [form, setForm] = useState<IntakeFormData>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [scanIndex, setScanIndex] = useState(0);
-  const [verdict, setVerdict] = useState<AuditVerdict | null>(null);
-  const [useWhiteLabel, setUseWhiteLabel] = useState(whiteLabel.enabledByDefault);
-  const [markupPrice, setMarkupPrice] = useState(whiteLabel.resalePrice);
+  const [scanResults, setScanResults] = useState<ScanResults | null>(null);
+  const [useWhiteLabel] = useState(whiteLabel.enabledByDefault);
+  const [markupPrice] = useState(whiteLabel.resalePrice);
   const [agreeBoundary, setAgreeBoundary] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [createdId, setCreatedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (step !== 'scanning') return;
-    if (scanIndex >= SCAN_STEPS.length) {
-      const v = runPreIntakeAudit(form);
-      setVerdict(v);
-      const t = window.setTimeout(() => setStep('verdict'), 400);
-      return () => window.clearTimeout(t);
-    }
-    const t = window.setTimeout(() => setScanIndex((i) => i + 1), 550);
-    return () => window.clearTimeout(t);
-  }, [step, scanIndex, form]);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const toggleIssue = (key: string) => {
     setForm((f) => ({
       ...f,
-      knownIssues: f.knownIssues.includes(key) ? f.knownIssues.filter((k) => k !== key) : [...f.knownIssues, key],
+      knownIssues: f.knownIssues.includes(key) ? f.knownIssues.includes(key) ? f.knownIssues.filter((k) => k !== key) : [...f.knownIssues, key] : [...f.knownIssues, key],
     }));
   };
 
@@ -115,37 +90,64 @@ export default function NewAudit() {
     return Object.keys(errs).length === 0;
   };
 
-  const startScan = () => {
+  const startScan = async () => {
     if (!validateIntake()) return;
-    setScanIndex(0);
     setStep('scanning');
+    setScanError(null);
+
+    try {
+      const res = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: form.siteUrl,
+          clientName: form.clientName,
+          clientEmail: form.clientEmail,
+          builderTool: form.builderTool,
+          agencyNotes: form.agencyNotes,
+          knownIssues: form.knownIssues,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Scan failed');
+      }
+
+      const data: ScanResults = await res.json();
+      setScanResults(data);
+      setStep('results');
+    } catch (err: unknown) {
+      setScanError(err instanceof Error ? err.message : 'Scan failed');
+      setStep('intake');
+    }
   };
 
   const restart = () => {
     setForm(emptyForm);
-    setVerdict(null);
-    setScanIndex(0);
+    setScanResults(null);
+    setScanError(null);
     setAgreeBoundary(false);
-    setCreatedId(null);
     setStep('intake');
-  };
-
-  const submitScope = () => {
-    setSubmitting(true);
-    window.setTimeout(() => {
-      const project = createProject(form, useWhiteLabel, useWhiteLabel ? markupPrice : undefined);
-      setCreatedId(project.id);
-      setSubmitting(false);
-      setStep('done');
-    }, 1000);
   };
 
   const stepIndex = useMemo(() => {
     if (step === 'intake') return 0;
-    if (step === 'scanning' || step === 'verdict') return 1;
-    if (step === 'scope') return 2;
+    if (step === 'scanning') return 1;
+    if (step === 'results') return 2;
     return 3;
   }, [step]);
+
+  const allIssues = scanResults
+    ? [
+        ...scanResults.scanResult.ssl.error ? [`SSL: ${scanResults.scanResult.ssl.error}`] : [],
+        ...scanResults.scanResult.dns.error ? [`DNS: ${scanResults.scanResult.dns.error}`] : [],
+        ...scanResults.scanResult.seo.issues,
+        ...scanResults.scanResult.viewport.issues,
+        ...scanResults.scanResult.performance.issues,
+        ...scanResults.scanResult._forms.issues,
+      ]
+    : [];
 
   return (
     <AppShell>
@@ -153,12 +155,12 @@ export default function NewAudit() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-white">New Audit Intake</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Submit a site for the automated pre-intake audit before any human time is spent.
+            Submit a site for a real technical scan before any human time is spent.
           </p>
         </div>
 
         <div className="mb-10 flex items-center gap-2">
-          {['Intake', 'Automated Audit', 'Scope & Confirm', 'Done'].map((label, idx) => (
+          {['Intake', 'Scanning', 'Results', 'Done'].map((label, idx) => (
             <div key={label} className="flex flex-1 items-center gap-2">
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
@@ -180,6 +182,12 @@ export default function NewAudit() {
             <motion.div key="intake" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
               <Card>
                 <CardContent className="space-y-6 p-6 sm:p-8">
+                  {scanError && (
+                    <div className="rounded-lg border border-red-500/25 bg-red-500/[0.04] p-3 text-sm text-red-300">
+                      {scanError}
+                    </div>
+                  )}
+
                   <div>
                     <Label htmlFor="siteUrl">Site URL *</Label>
                     <Input
@@ -223,9 +231,7 @@ export default function NewAudit() {
                         onChange={(e) => setForm({ ...form, builderTool: e.target.value })}
                       >
                         {BUILDER_TOOLS.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
+                          <option key={t} value={t}>{t}</option>
                         ))}
                       </Select>
                     </div>
@@ -236,9 +242,9 @@ export default function NewAudit() {
                         value={form.pageCount}
                         onChange={(e) => setForm({ ...form, pageCount: e.target.value })}
                       >
-                        <option value="1-5">1–5 pages</option>
-                        <option value="6-15">6–15 pages</option>
-                        <option value="16-50">16–50 pages</option>
+                        <option value="1-5">1-5 pages</option>
+                        <option value="6-15">6-15 pages</option>
+                        <option value="16-50">16-50 pages</option>
                         <option value="50+">50+ pages</option>
                       </Select>
                     </div>
@@ -288,14 +294,14 @@ export default function NewAudit() {
                     <Label htmlFor="agencyNotes">Agency Notes (optional)</Label>
                     <Textarea
                       id="agencyNotes"
-                      placeholder="Anything your rescue engineer should know — launch deadlines, client sensitivities, etc."
+                      placeholder="Anything your rescue engineer should know - launch deadlines, client sensitivities, etc."
                       value={form.agencyNotes}
                       onChange={(e) => setForm({ ...form, agencyNotes: e.target.value })}
                     />
                   </div>
 
                   <Button size="lg" className="w-full" onClick={startScan}>
-                    Run Automated Pre-Intake Audit <ArrowRight className="h-4 w-4" />
+                    Run Website Scan <ArrowRight className="h-4 w-4" />
                   </Button>
                 </CardContent>
               </Card>
@@ -310,212 +316,139 @@ export default function NewAudit() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
                       <ScanSearch className="h-8 w-8 animate-pulse text-emerald-400" />
                     </div>
-                    <h2 className="mt-5 text-lg font-semibold text-zinc-100">Running pre-intake audit\u2026</h2>
-                    <p className="mt-1 text-sm text-zinc-500">Scoring {form.siteUrl || 'your site'} against package scope.</p>
-                  </div>
-                  <div className="mt-8 space-y-3">
-                    {IS_DEMO && (
-                      <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-3 text-xs text-amber-300">
-                        Demo mode — scan is simulated, not real
-                      </div>
-                    )}
-                    {SCAN_STEPS.map((s, idx) => (
-                      <div key={s.key} className="flex items-center gap-3 text-sm">
-                        {idx < scanIndex ? (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-                        ) : idx === scanIndex ? (
-                          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-emerald-400" />
-                        ) : (
-                          <div className="h-4 w-4 shrink-0 rounded-full border border-zinc-700" />
-                        )}
-                        <span className={idx <= scanIndex ? 'text-zinc-200' : 'text-zinc-600'}>{s.label}</span>
-                      </div>
-                    ))}
+                    <h2 className="mt-5 text-lg font-semibold text-zinc-100">Scanning website...</h2>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      Running real checks on {form.siteUrl || 'your site'} - SSL, DNS, SEO, viewport, performance, forms.
+                    </p>
+                    <p className="mt-2 text-xs text-zinc-600">This usually takes 5-15 seconds.</p>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
           )}
 
-          {step === 'verdict' && verdict && (
-            <motion.div key="verdict" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-              <Card className={verdict.accepted ? 'border-emerald-500/30' : 'border-red-500/30'}>
+          {step === 'results' && scanResults && (
+            <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+              <Card className={allIssues.length === 0 ? 'border-emerald-500/30' : 'border-amber-500/30'}>
                 <CardContent className="p-6 sm:p-8">
                   <div className="flex items-center gap-3">
-                    {verdict.accepted ? (
+                    {allIssues.length === 0 ? (
                       <CheckCircle2 className="h-8 w-8 text-emerald-400" />
                     ) : (
-                      <XCircle className="h-8 w-8 text-red-400" />
+                      <AlertTriangle className="h-8 w-8 text-amber-400" />
                     )}
                     <div>
-                      <h2 className="text-lg font-semibold text-zinc-100">
-                        {verdict.accepted ? 'Package Approved' : 'Rejected — Requires Custom Scope'}
-                      </h2>
-                      <p className="text-sm text-zinc-500">Complexity score: {verdict.score}/100</p>
+                      <h2 className="text-lg font-semibold text-zinc-100">Scan Complete</h2>
+                      <p className="text-sm text-zinc-500">Score: {scanResults.score}/100</p>
                     </div>
                   </div>
 
                   <div className="mt-6 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
                     <div
-                      className={`h-full ${verdict.score < 50 ? 'bg-emerald-500' : 'bg-red-500'}`}
-                      style={{ width: `${verdict.score}%` }}
+                      className={`h-full ${scanResults.score >= 70 ? 'bg-emerald-500' : scanResults.score >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                      style={{ width: `${scanResults.score}%` }}
                     />
                   </div>
 
-                  {verdict.accepted ? (
-                    <div className="mt-6 space-y-2">
-                      {verdict.positives.map((p, i) => (
-                        <div key={i} className="flex items-start gap-2.5 text-sm text-zinc-300">
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> {p}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-6 space-y-3">
-                      <p className="text-sm font-medium text-zinc-300">This site was rejected for the fixed package because:</p>
-                      {verdict.reasons.map((r, i) => (
-                        <div key={i} className="flex items-start gap-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.04] p-3 text-sm text-red-300">
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {r}
-                        </div>
-                      ))}
-                      <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-4">
-                        <p className="text-sm text-amber-300">
-                          This qualifies for a custom scoped engagement at our hourly rate of{' '}
-                          <strong>${CUSTOM_HOURLY_RATE}/hr</strong>, quoted in writing before any work begins.
-                        </p>
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+                        <Lock className="h-4 w-4 text-emerald-400" /> SSL Certificate
                       </div>
+                      <div className="mt-2 text-xs text-zinc-400">
+                        {scanResults.scanResult.ssl.valid ? (
+                          <span className="text-emerald-400">Valid - {scanResults.scanResult.ssl.issuer} (expires in {scanResults.scanResult.ssl.daysUntilExpiry} days)</span>
+                        ) : (
+                          <span className="text-red-400">{scanResults.scanResult.ssl.error || 'Invalid'}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+                        <Gauge className="h-4 w-4 text-emerald-400" /> DNS Resolution
+                      </div>
+                      <div className="mt-2 text-xs text-zinc-400">
+                        {scanResults.scanResult.dns.resolved ? (
+                          <span className="text-emerald-400">Resolved - {scanResults.scanResult.dns.records?.length} A records</span>
+                        ) : (
+                          <span className="text-red-400">{scanResults.scanResult.dns.error || 'Failed'}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+                        <Search className="h-4 w-4 text-emerald-400" /> SEO Meta
+                      </div>
+                      <div className="mt-2 text-xs text-zinc-400">
+                        Title: {scanResults.scanResult.seo.hasTitle ? `${scanResults.scanResult.seo.titleLength} chars` : 'Missing'} | 
+                        Description: {scanResults.scanResult.seo.hasMetaDescription ? `${scanResults.scanResult.seo.metaDescriptionLength} chars` : 'Missing'} |
+                        OG Tags: {scanResults.scanResult.seo.hasOgTags ? 'Yes' : 'No'}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+                        <Smartphone className="h-4 w-4 text-emerald-400" /> Mobile Viewport
+                      </div>
+                      <div className="mt-2 text-xs text-zinc-400">
+                        {scanResults.scanResult.viewport.hasViewportMeta ? (
+                          <span className="text-emerald-400">Configured: {scanResults.scanResult.viewport.content}</span>
+                        ) : (
+                          <span className="text-red-400">Missing viewport meta tag</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {allIssues.length > 0 && (
+                    <div className="mt-6 space-y-2">
+                      <p className="text-sm font-medium text-zinc-300">Issues Found ({allIssues.length}):</p>
+                      {allIssues.map((issue, i) => (
+                        <div key={i} className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 text-sm text-amber-300">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {issue}
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900/40 p-5">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-4 text-sm text-amber-200">
+                      <Checkbox checked={agreeBoundary} onCheckedChange={(v) => setAgreeBoundary(v === true)} className="mt-0.5" />
+                      I understand this package covers only the five fixes listed above. Any custom backend or
+                      API integration work is out of scope and will be billed separately at ${CUSTOM_HOURLY_RATE}/hr,
+                      quoted in writing before work begins.
+                    </label>
+                  </div>
+
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                     <Button variant="outline" onClick={restart} className="sm:flex-1">
                       <ArrowLeft className="h-4 w-4" /> Start a New Audit
                     </Button>
-                    {verdict.accepted ? (
-                      <Button onClick={() => setStep('scope')} className="sm:flex-1">
-                        Continue to Scope &amp; Confirm <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        className="sm:flex-1"
-                        onClick={() => (window.location.href = `mailto:partners@livecheck.dev?subject=Custom quote request — ${form.siteUrl}`)}
-                      >
-                        Request Custom Quote
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {step === 'scope' && verdict && (
-            <motion.div key="scope" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-              <Card>
-                <CardContent className="space-y-6 p-6 sm:p-8">
-                  <div>
-                    <h2 className="text-lg font-semibold text-zinc-100">Confirm Scope</h2>
-                    <p className="mt-1 text-sm text-zinc-500">
-                      {form.clientName} — {form.siteUrl}
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-zinc-300">Fixed Package</span>
-                      <span className="text-xl font-bold text-white">${PACKAGE_PRICE}</span>
-                    </div>
-                    <div className="mt-4 space-y-2.5">
-                      {FIXES.map((f) => {
-                        const Icon = FIX_ICONS[f.key];
-                        return (
-                          <div key={f.key} className="flex items-center gap-2.5 text-sm text-zinc-300">
-                            <Icon className="h-4 w-4 text-emerald-400" /> {f.label}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-4 text-sm text-amber-200">
-                    <Checkbox checked={agreeBoundary} onCheckedChange={(v) => setAgreeBoundary(v === true)} className="mt-0.5" />
-                    I understand this package covers only the five fixes listed above. Any custom backend or
-                    API integration work is out of scope and will be billed separately at ${CUSTOM_HOURLY_RATE}/hr,
-                    quoted in writing before work begins.
-                  </label>
-
-                  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-5">
-                    <label className="flex cursor-pointer items-center justify-between gap-3">
-                      <span className="flex items-center gap-2 text-sm font-medium text-zinc-200">
-                        <Building2 className="h-4 w-4 text-emerald-400" /> Deliver under white-label branding
-                      </span>
-                      <Checkbox checked={useWhiteLabel} onCheckedChange={(v) => setUseWhiteLabel(v === true)} />
-                    </label>
-                    {useWhiteLabel && (
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <Label>Delivered as</Label>
-                          <Input value={whiteLabel.agencyName} disabled />
-                        </div>
-                        <div>
-                          <Label htmlFor="markup">Your resale price to client</Label>
-                          <Input
-                            id="markup"
-                            type="number"
-                            min={PACKAGE_PRICE}
-                            value={markupPrice}
-                            onChange={(e) => setMarkupPrice(Number(e.target.value))}
-                          />
-                        </div>
-                        <div className="sm:col-span-2 rounded-lg bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-300">
-                          Your margin on this project: <strong>${Math.max(0, markupPrice - PACKAGE_PRICE)}</strong>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button variant="outline" onClick={() => setStep('verdict')} className="sm:flex-1">
-                      <ArrowLeft className="h-4 w-4" /> Back
-                    </Button>
-                    <Button onClick={submitScope} disabled={!agreeBoundary || submitting} className="sm:flex-1">
+                    <Button
+                      onClick={async () => {
+                        setSubmitting(true);
+                        try {
+                          const project = await createProject(form, useWhiteLabel, useWhiteLabel ? markupPrice : undefined);
+                          navigate(`/projects/${project.id}`);
+                        } catch (err: unknown) {
+                          setScanError(err instanceof Error ? err.message : 'Failed to create project');
+                          setSubmitting(false);
+                        }
+                      }}
+                      disabled={!agreeBoundary || submitting}
+                      className="sm:flex-1"
+                    >
                       {submitting ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Submitting\u2026
+                          <Loader2 className="h-4 w-4 animate-spin" /> Creating Project...
                         </>
                       ) : (
                         <>
-                          Confirm &amp; Start Audit <ArrowRight className="h-4 w-4" />
+                          Create Project & Start Fixes <ArrowRight className="h-4 w-4" />
                         </>
                       )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {step === 'done' && createdId && (
-            <motion.div key="done" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-              <Card className="border-emerald-500/30">
-                <CardContent className="flex flex-col items-center p-10 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
-                    <Sparkles className="h-8 w-8 text-emerald-400" />
-                  </div>
-                  <h2 className="mt-5 text-xl font-bold text-white">Audit submitted</h2>
-                  <p className="mt-2 max-w-sm text-sm text-zinc-500">
-                    {IS_DEMO
-                      ? `Demo mode: Project ${createdId.toUpperCase()} created with simulated processing. No real scan was performed.`
-                      : `Project ${createdId.toUpperCase()} created. Pre-intake complexity score has been evaluated. You'll see the status on the project page.`}
-                  </p>
-                  <Badge className="mt-4" variant="info">Project {createdId.toUpperCase()}</Badge>
-                  <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row">
-                    <Button variant="outline" className="sm:flex-1" onClick={() => navigate('/dashboard')}>
-                      Back to Dashboard
-                    </Button>
-                    <Button className="sm:flex-1" onClick={() => navigate(`/projects/${createdId}`)}>
-                      View Live Progress <ArrowRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>

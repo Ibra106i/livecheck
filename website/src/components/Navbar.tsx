@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X, ArrowRight, LogOut } from 'lucide-react';
 import { Logo } from './Logo';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 const LINKS = [
   { href: '#features', label: 'Features' },
@@ -20,6 +21,7 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -60,16 +62,32 @@ export function Navbar() {
           ))}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
-          <Link to="/dashboard">
-            <Button variant="ghost" size="sm">
-              Dashboard
-            </Button>
-          </Link>
-          <Link to="/audit">
-            <Button size="sm">
-              Start Audit <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+          {user ? (
+            <>
+              <span className="text-xs text-zinc-500">{user.email}</span>
+              <Link to="/dashboard">
+                <Button variant="ghost" size="sm">
+                  Dashboard
+                </Button>
+              </Link>
+              <Button variant="ghost" size="sm" onClick={() => { logout(); navigate('/'); }}>
+                <LogOut className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="ghost" size="sm">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/audit">
+                <Button size="sm">
+                  Start Audit <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
         <button
           className="md:hidden text-fg-muted hover:text-fg transition-colors"
@@ -94,14 +112,30 @@ export function Navbar() {
             ))}
             <Separator className="my-2" />
             <div className="flex flex-col gap-2">
-              <Link to="/dashboard" onClick={() => setOpen(false)} className="text-center">
-                <Button variant="outline" className="w-full">
-                  Dashboard
-                </Button>
-              </Link>
-              <Link to="/audit" onClick={() => setOpen(false)} className="text-center">
-                <Button className="w-full">Start Audit</Button>
-              </Link>
+              {user ? (
+                <>
+                  <div className="px-3 text-xs text-zinc-500">{user.email}</div>
+                  <Link to="/dashboard" onClick={() => setOpen(false)} className="text-center">
+                    <Button variant="outline" className="w-full">
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" className="w-full" onClick={() => { logout(); navigate('/'); setOpen(false); }}>
+                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setOpen(false)} className="text-center">
+                    <Button variant="outline" className="w-full">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/audit" onClick={() => setOpen(false)} className="text-center">
+                    <Button className="w-full">Start Audit</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -15,6 +15,7 @@ export interface FixItem {
 export type ProjectStatus =
   | 'rejected'
   | 'pending_review'
+  | 'scanned'
   | 'auto_patching'
   | 'in_review'
   | 'delivered';

@@ -1,193 +1,138 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { IntakeFormData, Project, WhiteLabelSettings } from '../lib/types';
-import { DEFAULT_WHITE_LABEL, FIXES, PATCH_MESSAGES, SEED_PROJECTS } from '../lib/mockData';
-import { runPreIntakeAudit } from '../lib/audit';
-import { uid } from '../lib/utils';
+import { DEFAULT_WHITE_LABEL } from '../lib/mockData';
 
-const PROJECTS_KEY = 'livecheck_projects_v1';
-const WHITE_LABEL_KEY = 'livecheck_whitelabel_v1';
-const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 interface ProjectsContextValue {
   projects: Project[];
   whiteLabel: WhiteLabelSettings;
+  loading: boolean;
+  error: string | null;
   updateWhiteLabel: (patch: Partial<WhiteLabelSettings>) => void;
   getProject: (id: string) => Project | undefined;
-  createProject: (form: IntakeFormData, useWhiteLabel: boolean, markupPrice?: number) => Project;
+  createProject: (form: IntakeFormData, useWhiteLabel: boolean, markupPrice?: number) => Promise<Project>;
+  refreshProjects: () => Promise<void>;
 }
 
 const ProjectsContext = createContext<ProjectsContextValue | null>(null);
 
-function loadProjects(): Project[] {
-  if (!IS_DEMO) return [];
-  try {
-    const raw = localStorage.getItem(PROJECTS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-  return SEED_PROJECTS;
-}
-
-function loadWhiteLabel(): WhiteLabelSettings {
-  try {
-    const raw = localStorage.getItem(WHITE_LABEL_KEY);
-    if (raw) return { ...DEFAULT_WHITE_LABEL, ...JSON.parse(raw) };
-  } catch {
-    /* ignore */
-  }
-  return DEFAULT_WHITE_LABEL;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapApiProject(apiProject: any): Project {
+  return {
+    id: apiProject.id,
+    siteUrl: apiProject.site_url,
+    clientName: apiProject.client_name,
+    clientEmail: apiProject.client_email,
+    builderTool: apiProject.builder_tool,
+    agencyNotes: apiProject.agency_notes,
+    status: apiProject.status,
+    complexityScore: apiProject.complexity_score,
+    createdAt: apiProject.created_at,
+    updatedAt: apiProject.updated_at,
+    fixes: apiProject.fixes || [],
+    patchLog: apiProject.patch_log || [],
+    whiteLabel: apiProject.white_label,
+    markupPrice: apiProject.markup_price,
+    rejectionReasons: apiProject.rejection_reasons,
+    customWorkFlag: apiProject.custom_work_flag,
+    hoursSaved: apiProject.hours_saved,
+    turnaroundHours: apiProject.turnaround_hours,
+    knownIssues: apiProject.known_issues || [],
+  };
 }
 
 export function ProjectsProvider({ children }: { children: React.ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(loadProjects);
-  const [whiteLabel, setWhiteLabel] = useState<WhiteLabelSettings>(loadWhiteLabel);
-  const timers = useRef<number[]>([]);
-
-  useEffect(() => {
-    if (IS_DEMO) {
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [whiteLabel, setWhiteLabel] = useState<WhiteLabelSettings>(() => {
+    const saved = localStorage.getItem('livecheck_whitelabel_v1');
+    if (saved) {
+      try {
+        return { ...DEFAULT_WHITE_LABEL, ...JSON.parse(saved) };
+      } catch { /* ignore */ }
     }
-  }, [projects, IS_DEMO]);
+    return DEFAULT_WHITE_LABEL;
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refreshProjects = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`${API_BASE}/api/projects`);
+      if (!res.ok) throw new Error('Failed to fetch projects');
+      const data = await res.json();
+      setProjects(data.map(mapApiProject));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      console.error('Failed to load projects:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(WHITE_LABEL_KEY, JSON.stringify(whiteLabel));
+    refreshProjects();
+  }, [refreshProjects]);
+
+  useEffect(() => {
+    localStorage.setItem('livecheck_whitelabel_v1', JSON.stringify(whiteLabel));
   }, [whiteLabel]);
 
-  useEffect(() => {
-    return () => {
-      timers.current.forEach((t) => window.clearTimeout(t));
-    };
-  }, []);
-
-  const patchProject = useCallback((id: string, updater: (p: Project) => Project) => {
-    setProjects((prev) => prev.map((p) => (p.id === id ? updater(p) : p)));
-  }, []);
-
-  const scheduleAutoPatch = useCallback(
-    (projectId: string) => {
-      const order = FIXES.map((f) => f.key);
-      let delay = 1400;
-
-      order.forEach((fixKey, idx) => {
-        const startTimer = window.setTimeout(() => {
-          patchProject(projectId, (p) => ({
-            ...p,
-            updatedAt: new Date().toISOString(),
-            fixes: p.fixes.map((f) => (f.key === fixKey ? { ...f, status: 'in_progress' } : f)),
-          }));
-        }, delay);
-        timers.current.push(startTimer);
-        delay += 1600;
-
-        const doneTimer = window.setTimeout(() => {
-          const messages = PATCH_MESSAGES[fixKey] || [];
-          const message = messages[Math.floor(Math.random() * messages.length)] || 'Automated patch applied.';
-          patchProject(projectId, (p) => ({
-            ...p,
-            updatedAt: new Date().toISOString(),
-            fixes: p.fixes.map((f) => (f.key === fixKey ? { ...f, status: 'done' } : f)),
-            patchLog: [
-              ...p.patchLog,
-              { id: uid('log'), timestamp: new Date().toISOString(), fixKey, message, automated: true },
-            ],
-          }));
-
-          if (idx === order.length - 1) {
-            const reviewTimer = window.setTimeout(() => {
-              patchProject(projectId, (p) => ({
-                ...p,
-                status: 'in_review',
-                updatedAt: new Date().toISOString(),
-                patchLog: [
-                  ...p.patchLog,
-                  {
-                    id: uid('log'),
-                    timestamp: new Date().toISOString(),
-                    fixKey: 'system',
-                    message: 'Automated patch pass complete (80%+ of common issues resolved). Routed to human QA for sign-off.',
-                    automated: true,
-                  },
-                ],
-              }));
-              timers.current.push(reviewTimer);
-            }, 1800);
-
-            const deliverTimer = window.setTimeout(() => {
-              patchProject(projectId, (p) => ({
-                ...p,
-                status: 'delivered',
-                updatedAt: new Date().toISOString(),
-                hoursSaved: p.hoursSaved || 18 + Math.floor(Math.random() * 12),
-                turnaroundHours: p.turnaroundHours || 24 + Math.floor(Math.random() * 20),
-                patchLog: [
-                  ...p.patchLog,
-                  {
-                    id: uid('log'),
-                    timestamp: new Date().toISOString(),
-                    fixKey: 'system',
-                    message: 'Human QA sign-off complete. White-label SLA certificate generated and ready for download.',
-                    automated: false,
-                  },
-                ],
-              }));
-            }, 5200);
-            timers.current.push(deliverTimer);
-          }
-        }, delay);
-        timers.current.push(doneTimer);
-        delay += 900;
-      });
-    },
-    [patchProject]
-  );
-
   const createProject = useCallback(
-    (form: IntakeFormData, useWhiteLabel: boolean, markupPrice?: number): Project => {
-      const verdict = runPreIntakeAudit(form);
-      const id = `lc-${1100 + Math.floor(Math.random() * 8899)}`;
-      const now = new Date().toISOString();
+    async (form: IntakeFormData, useWhiteLabel: boolean, markupPrice?: number): Promise<Project> => {
+      const res = await fetch(`${API_BASE}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: form.siteUrl,
+          clientName: form.clientName,
+          clientEmail: form.clientEmail,
+          builderTool: form.builderTool,
+          agencyNotes: form.agencyNotes,
+          knownIssues: form.knownIssues,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Scan failed');
+      }
+
+      const { projectId, score } = await res.json();
 
       const project: Project = {
-        id,
+        id: projectId,
         siteUrl: form.siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''),
         clientName: form.clientName,
         clientEmail: form.clientEmail,
         builderTool: form.builderTool,
         agencyNotes: form.agencyNotes || undefined,
-        status: verdict.accepted ? 'auto_patching' : 'rejected',
-        complexityScore: verdict.score,
-        createdAt: now,
-        updatedAt: now,
-        whiteLabel: verdict.accepted ? useWhiteLabel : false,
-        markupPrice: verdict.accepted && useWhiteLabel ? markupPrice : undefined,
-        customWorkFlag: !verdict.accepted,
-        rejectionReasons: verdict.accepted ? undefined : verdict.reasons,
+        status: 'scanned',
+        complexityScore: score,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        whiteLabel: useWhiteLabel,
+        markupPrice: useWhiteLabel ? markupPrice : undefined,
         hoursSaved: 0,
         knownIssues: form.knownIssues,
-        fixes: FIXES.map((f) => ({ key: f.key, status: 'pending' as const })),
+        fixes: [],
         patchLog: [
           {
-            id: uid('log'),
-            timestamp: now,
+            id: `log_${Date.now()}`,
+            timestamp: new Date().toISOString(),
             fixKey: 'system',
-            message: verdict.accepted
-              ? `Pre-intake audit passed — complexity score ${verdict.score}/100. Package auto-approved and queued for automated patching.`
-              : `Pre-intake audit failed — complexity score ${verdict.score}/100. Auto-rejected before human review to avoid unprofitable scope creep.`,
+            message: `Real website scan completed. Score: ${score}/100`,
             automated: true,
           },
         ],
       };
 
       setProjects((prev) => [project, ...prev]);
-
-      if (verdict.accepted && IS_DEMO) {
-        scheduleAutoPatch(id);
-      }
-
       return project;
     },
-    [scheduleAutoPatch]
+    [API_BASE]
   );
 
   const updateWhiteLabel = useCallback((patch: Partial<WhiteLabelSettings>) => {
@@ -197,7 +142,7 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
   const getProject = useCallback((id: string) => projects.find((p) => p.id === id), [projects]);
 
   return (
-    <ProjectsContext.Provider value={{ projects, whiteLabel, updateWhiteLabel, getProject, createProject }}>
+    <ProjectsContext.Provider value={{ projects, whiteLabel, loading, error, updateWhiteLabel, getProject, createProject, refreshProjects }}>
       {children}
     </ProjectsContext.Provider>
   );
