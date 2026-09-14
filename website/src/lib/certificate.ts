@@ -2,13 +2,22 @@ import type { Project, WhiteLabelSettings } from './types';
 import { FIXES, PACKAGE_PRICE } from './mockData';
 import { formatDate } from './utils';
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function buildCertificateHtml(project: Project, wl: WhiteLabelSettings): string {
   const issuedTo = wl.enabledByDefault || project.whiteLabel ? wl.agencyName : 'Livecheck';
   const price = project.whiteLabel ? project.markupPrice ?? wl.resalePrice : PACKAGE_PRICE;
   const accent = wl.accentColor || '#10b981';
   const fixRows = FIXES.map(
     (f) => `<tr>
-      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#111827;">${f.label}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#111827;">${escapeHtml(f.label)}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;color:#059669;font-weight:600;text-align:right;">&#10003; Verified</td>
     </tr>`
   ).join('');
@@ -17,26 +26,25 @@ export function buildCertificateHtml(project: Project, wl: WhiteLabelSettings): 
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Service Completion Certificate — ${project.siteUrl}</title>
+<title>Service Completion Certificate — ${escapeHtml(project.siteUrl)}</title>
 </head>
 <body style="margin:0;background:#f4f4f5;font-family:Helvetica,Arial,sans-serif;padding:40px 16px;">
   <div style="max-width:680px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
-    <div style="background:${accent};padding:28px 36px;color:#04140f;">
+    <div style="background:${escapeHtml(accent)};padding:28px 36px;color:#04140f;">
       <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.75;font-weight:700;">Service Completion Certificate</div>
-      <div style="font-size:26px;font-weight:800;margin-top:6px;">${issuedTo}</div>
+      <div style="font-size:26px;font-weight:800;margin-top:6px;">${escapeHtml(issuedTo)}</div>
     </div>
     <div style="padding:32px 36px;">
       <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 20px;">
-        This certifies that the website below has been audited and remediated under the Livecheck
-        Last-Mile Rescue Package. All five scoped technical fixes have been verified complete and
-        signed off by a human QA reviewer.
+        This certifies that the website below has been processed through the Livecheck
+        automated intake system. The five scoped technical items have been evaluated and documented.
       </p>
       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px;">
-        <tr><td style="padding:6px 0;color:#6b7280;width:160px;">Client</td><td style="padding:6px 0;font-weight:600;color:#111827;">${project.clientName}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Website</td><td style="padding:6px 0;font-weight:600;color:#111827;">${project.siteUrl}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Project Reference</td><td style="padding:6px 0;font-weight:600;color:#111827;">${project.id.toUpperCase()}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Completion Date</td><td style="padding:6px 0;font-weight:600;color:#111827;">${formatDate(project.updatedAt)}</td></tr>
-        <tr><td style="padding:6px 0;color:#6b7280;">Package Value</td><td style="padding:6px 0;font-weight:600;color:#111827;">$${price}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;width:160px;">Client</td><td style="padding:6px 0;font-weight:600;color:#111827;">${escapeHtml(project.clientName)}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Website</td><td style="padding:6px 0;font-weight:600;color:#111827;">${escapeHtml(project.siteUrl)}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Project Reference</td><td style="padding:6px 0;font-weight:600;color:#111827;">${escapeHtml(project.id.toUpperCase())}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Completion Date</td><td style="padding:6px 0;font-weight:600;color:#111827;">${escapeHtml(formatDate(project.updatedAt))}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Package Value</td><td style="padding:6px 0;font-weight:600;color:#111827;">$${escapeHtml(String(price))}</td></tr>
       </table>
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
         <thead>
@@ -52,10 +60,10 @@ export function buildCertificateHtml(project: Project, wl: WhiteLabelSettings): 
       </p>
       <div style="margin-top:32px;display:flex;justify-content:space-between;align-items:flex-end;">
         <div>
-          <div style="font-family:Georgia, serif;font-size:22px;color:#111827;border-bottom:2px solid #111827;display:inline-block;padding-bottom:2px;">${issuedTo}</div>
+          <div style="font-family:Georgia, serif;font-size:22px;color:#111827;border-bottom:2px solid #111827;display:inline-block;padding-bottom:2px;">${escapeHtml(issuedTo)}</div>
           <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Authorized Delivery Partner</div>
         </div>
-        <div style="font-size:11px;color:#9ca3af;text-align:right;">Certificate ID<br/><span style="color:#111827;font-weight:600;">${project.id.toUpperCase()}-CERT</span></div>
+        <div style="font-size:11px;color:#9ca3af;text-align:right;">Certificate ID<br/><span style="color:#111827;font-weight:600;">${escapeHtml(project.id.toUpperCase())}-CERT</span></div>
       </div>
     </div>
     <div style="background:#fafafa;border-top:1px solid #e5e7eb;padding:14px 36px;font-size:11px;color:#9ca3af;">

@@ -212,6 +212,7 @@ export default function ProjectStatus() {
               title="certificate-preview"
               className="h-[70vh] w-full rounded-lg border border-zinc-800 bg-white"
               srcDoc={buildCertificateHtml(project, whiteLabel)}
+              sandbox=""
             />
           </div>
           <div className="flex justify-end gap-3 border-t border-zinc-800 p-4">
