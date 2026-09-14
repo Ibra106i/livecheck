@@ -39,12 +39,14 @@ const FIX_ICONS: Record<string, React.ElementType> = {
   page_speed: Gauge,
 };
 
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+
 const SCAN_STEPS = [
-  { key: 'ssl_dns', label: 'Checking SSL certificate & DNS records\u2026' },
-  { key: 'form_routing', label: 'Testing form action endpoints\u2026' },
-  { key: 'mobile_viewport', label: 'Rendering mobile breakpoints\u2026' },
-  { key: 'seo_meta', label: 'Scanning meta tags & indexability\u2026' },
-  { key: 'page_speed', label: 'Measuring page speed & asset weight\u2026' },
+  { key: 'ssl_dns', label: IS_DEMO ? 'Simulating SSL check\u2026' : 'Evaluating SSL & DNS scope\u2026' },
+  { key: 'form_routing', label: IS_DEMO ? 'Simulating form check\u2026' : 'Evaluating form routing scope\u2026' },
+  { key: 'mobile_viewport', label: IS_DEMO ? 'Simulating viewport check\u2026' : 'Evaluating mobile viewport scope\u2026' },
+  { key: 'seo_meta', label: IS_DEMO ? 'Simulating SEO check\u2026' : 'Evaluating SEO meta scope\u2026' },
+  { key: 'page_speed', label: IS_DEMO ? 'Simulating speed check\u2026' : 'Evaluating page speed scope\u2026' },
   { key: 'scope', label: 'Scoring project complexity against package scope\u2026' },
 ];
 
@@ -312,6 +314,11 @@ export default function NewAudit() {
                     <p className="mt-1 text-sm text-zinc-500">Scoring {form.siteUrl || 'your site'} against package scope.</p>
                   </div>
                   <div className="mt-8 space-y-3">
+                    {IS_DEMO && (
+                      <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.04] p-3 text-xs text-amber-300">
+                        Demo mode — scan is simulated, not real
+                      </div>
+                    )}
                     {SCAN_STEPS.map((s, idx) => (
                       <div key={s.key} className="flex items-center gap-3 text-sm">
                         {idx < scanIndex ? (
@@ -498,8 +505,9 @@ export default function NewAudit() {
                   </div>
                   <h2 className="mt-5 text-xl font-bold text-white">Audit submitted</h2>
                   <p className="mt-2 max-w-sm text-sm text-zinc-500">
-                    Our automated patch script is now running against {form.siteUrl}. You'll see live progress
-                    on the project page, with delivery typically within 24–48 hours.
+                    {IS_DEMO
+                      ? `Demo mode: Project ${createdId.toUpperCase()} created with simulated processing. No real scan was performed.`
+                      : `Project ${createdId.toUpperCase()} created. Pre-intake complexity score has been evaluated. You'll see the status on the project page.`}
                   </p>
                   <Badge className="mt-4" variant="info">Project {createdId.toUpperCase()}</Badge>
                   <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row">

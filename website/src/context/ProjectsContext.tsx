@@ -6,6 +6,7 @@ import { uid } from '../lib/utils';
 
 const PROJECTS_KEY = 'livecheck_projects_v1';
 const WHITE_LABEL_KEY = 'livecheck_whitelabel_v1';
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
 
 interface ProjectsContextValue {
   projects: Project[];
@@ -18,6 +19,7 @@ interface ProjectsContextValue {
 const ProjectsContext = createContext<ProjectsContextValue | null>(null);
 
 function loadProjects(): Project[] {
+  if (!IS_DEMO) return [];
   try {
     const raw = localStorage.getItem(PROJECTS_KEY);
     if (raw) return JSON.parse(raw);
@@ -43,8 +45,10 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-  }, [projects]);
+    if (IS_DEMO) {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    }
+  }, [projects, IS_DEMO]);
 
   useEffect(() => {
     localStorage.setItem(WHITE_LABEL_KEY, JSON.stringify(whiteLabel));
@@ -177,7 +181,7 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
 
       setProjects((prev) => [project, ...prev]);
 
-      if (verdict.accepted) {
+      if (verdict.accepted && IS_DEMO) {
         scheduleAutoPatch(id);
       }
 
