@@ -19,8 +19,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   try {
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    const token = pathParts[pathParts.length - 1];
+    const token = url.searchParams.get('token');
 
     if (!token) {
       return jsonError('Missing report token', 400, headers);
