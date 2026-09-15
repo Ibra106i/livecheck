@@ -3,6 +3,37 @@ import https from 'https';
 import http from 'http';
 import { load as cheerioLoad } from 'cheerio';
 
+const MAX_REDIRECTS = 5;
+const MAX_BODY_BYTES = 5 * 1024 * 1024; // 5MB
+
+function isPrivateIP(ip: string): boolean {
+  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') return true;
+  if (ip.startsWith('10.')) return true;
+  if (ip.startsWith('192.168.')) return true;
+  if (ip.startsWith('172.')) {
+    const second = parseInt(ip.split('.')[1], 10);
+    if (second >= 16 && second <= 31) return true;
+  }
+  if (ip.startsWith('169.254.')) return true; // link-local
+  if (ip === '0.0.0.0') return true;
+  return false;
+}
+
+async function validateTargetHost(hostname: string): Promise<void> {
+  const addresses = await new Promise<string[]>((resolve, reject) => {
+    dns.resolve4(hostname, (err, addrs) => {
+      if (err) reject(new Error(`DNS resolution failed: ${err.message}`));
+      else resolve(addrs);
+    });
+  });
+
+  for (const addr of addresses) {
+    if (isPrivateIP(addr)) {
+      throw new Error(`Target host resolves to a private/internal IP: ${addr}`);
+    }
+  }
+}
+
 export interface ScanResult {
   ssl: {
     valid: boolean;
@@ -97,31 +128,55 @@ function checkDNS(url: string): Promise<ScanResult['dns']> {
   });
 }
 
-function fetchHtml(url: string): Promise<{ html: string; loadTimeMs: number; totalSizeBytes: number }> {
+function fetchHtml(url: string, redirectCount = 0): Promise<{ html: string; loadTimeMs: number; totalSizeBytes: number }> {
   return new Promise((resolve, reject) => {
+    if (redirectCount > MAX_REDIRECTS) {
+      reject(new Error(`Too many redirects (max ${MAX_REDIRECTS})`));
+      return;
+    }
+
     const startTime = Date.now();
-    const mod = url.startsWith('https') ? https : http;
-    const req = mod.get(url, { timeout: 15000, headers: { 'User-Agent': 'LivecheckBot/1.0' } }, (res) => {
-      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        fetchHtml(res.headers.location).then(resolve).catch(reject);
-        return;
-      }
-      const chunks: Buffer[] = [];
-      res.on('data', (chunk: Buffer) => chunks.push(chunk));
-      res.on('end', () => {
-        const html = Buffer.concat(chunks).toString('utf-8');
-        resolve({
-          html,
-          loadTimeMs: Date.now() - startTime,
-          totalSizeBytes: Buffer.byteLength(html),
+    const hostname = new URL(url).hostname;
+
+    validateTargetHost(hostname).then(() => {
+      const mod = url.startsWith('https') ? https : http;
+      const req = mod.get(url, { timeout: 15000, headers: { 'User-Agent': 'LivecheckBot/1.0' } }, (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          let redirectUrl = res.headers.location;
+          if (redirectUrl.startsWith('/')) {
+            const base = new URL(url);
+            redirectUrl = `${base.protocol}//${base.host}${redirectUrl}`;
+          }
+          res.resume(); // drain the response
+          fetchHtml(redirectUrl, redirectCount + 1).then(resolve).catch(reject);
+          return;
+        }
+        const chunks: Buffer[] = [];
+        let totalBytes = 0;
+        res.on('data', (chunk: Buffer) => {
+          totalBytes += chunk.length;
+          if (totalBytes > MAX_BODY_BYTES) {
+            req.destroy();
+            reject(new Error(`Response body exceeds ${MAX_BODY_BYTES / 1024 / 1024}MB limit`));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on('end', () => {
+          const html = Buffer.concat(chunks).toString('utf-8');
+          resolve({
+            html,
+            loadTimeMs: Date.now() - startTime,
+            totalSizeBytes: Buffer.byteLength(html),
+          });
         });
       });
-    });
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request timed out'));
-    });
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timed out'));
+      });
+    }).catch(reject);
   });
 }
 
@@ -250,6 +305,9 @@ async function checkPerformance(url: string, html: string): Promise<ScanResult['
 
 export async function scanWebsite(url: string): Promise<ScanResult> {
   if (!url.startsWith('http')) url = 'https://' + url;
+
+  const hostname = new URL(url).hostname;
+  await validateTargetHost(hostname);
 
   const [ssl, dnsResult] = await Promise.all([checkSSL(url), checkDNS(url)]);
 
