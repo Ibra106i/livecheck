@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { createHmac, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
+import { corsHeaders, jsonError } from './_auth.js';
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const hmacSecret = process.env.SHARE_HMAC_SECRET || '';
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
@@ -18,11 +18,6 @@ function generateToken(): string {
   return randomBytes(16).toString('hex');
 }
 
-function generateHmac(token: string): string {
-  if (!hmacSecret) return '';
-  return createHmac('sha256', hmacSecret).update(token).digest('hex');
-}
-
 function validateUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -33,50 +28,38 @@ function validateUrl(url: string): boolean {
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  const headers = corsHeaders();
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers });
+  }
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError('Method not allowed', 405, headers);
   }
 
   try {
     const body = await req.json();
 
     if (!body.url || typeof body.score !== 'number' || !body.summary || !body.results) {
-      return new Response(JSON.stringify({ error: 'Invalid report data' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Invalid report data', 400, headers);
     }
 
     if (!validateUrl(body.url)) {
-      return new Response(JSON.stringify({ error: 'Invalid URL format' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Invalid URL format', 400, headers);
     }
 
     if (body.summary.length > MAX_SUMMARY_LENGTH) {
-      return new Response(JSON.stringify({ error: 'Summary exceeds maximum length' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Summary exceeds maximum length', 400, headers);
     }
 
     const serializedResults = JSON.stringify(body.results);
     if (serializedResults.length > MAX_RESULTS_LENGTH) {
-      return new Response(JSON.stringify({ error: 'Results payload too large' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Results payload too large', 400, headers);
     }
 
     if (typeof body.score !== 'number' || body.score < 0 || body.score > 100) {
-      return new Response(JSON.stringify({ error: 'Score must be a number between 0 and 100' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Score must be a number between 0 and 100', 400, headers);
     }
 
     const token = generateToken();
@@ -93,30 +76,20 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (error) {
       if (error.code === '23505') {
-        return new Response(JSON.stringify({ error: 'Token collision, please retry' }), {
-          status: 409,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        return jsonError('Token collision, please retry', 409, headers);
       }
       console.error('Supabase insert error:', error);
-      return new Response(JSON.stringify({ error: 'Failed to save report' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Failed to save report', 500, headers);
     }
 
-    const signature = generateHmac(token);
     const shareUrl = `https://livechecks.vercel.app/r/${token}`;
 
-    return new Response(JSON.stringify({ url: shareUrl, token, signature }), {
+    return new Response(JSON.stringify({ url: shareUrl, token }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
     });
   } catch (err) {
     console.error('Share API error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError('Internal server error', 500, headers);
   }
 }

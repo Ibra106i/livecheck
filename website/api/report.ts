@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { corsHeaders, jsonError } from './_auth.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -6,11 +7,14 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default async function handler(req: Request): Promise<Response> {
+  const headers = corsHeaders();
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers });
+  }
+
   if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError('Method not allowed', 405, headers);
   }
 
   try {
@@ -19,17 +23,11 @@ export default async function handler(req: Request): Promise<Response> {
     const token = pathParts[pathParts.length - 1];
 
     if (!token) {
-      return new Response(JSON.stringify({ error: 'Missing report token' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Missing report token', 400, headers);
     }
 
     if (!supabase) {
-      return new Response(JSON.stringify({ error: 'Database not configured' }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Database not configured', 503, headers);
     }
 
     const { data, error } = await supabase
@@ -39,21 +37,15 @@ export default async function handler(req: Request): Promise<Response> {
       .single();
 
     if (error || !data) {
-      return new Response(JSON.stringify({ error: 'Report not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonError('Report not found', 404, headers);
     }
 
     return new Response(JSON.stringify(data), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...headers },
     });
   } catch (err: unknown) {
     console.error('Report fetch error:', err);
-    return new Response(JSON.stringify({ error: 'Failed to fetch report' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonError('Failed to fetch report', 500, headers);
   }
 }
