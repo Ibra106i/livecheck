@@ -275,7 +275,10 @@ export async function scanWebsite(url: string): Promise<ScanResult> {
   }
 
   try {
-    const robotsRes = await fetch('https://' + new URL(url).hostname + '/robots.txt', { timeout: 5000 });
+    const robotsController = new AbortController();
+    const robotsTimeout = setTimeout(() => robotsController.abort(), 5000);
+    const robotsRes = await fetch('https://' + new URL(url).hostname + '/robots.txt', { signal: robotsController.signal });
+    clearTimeout(robotsTimeout);
     seo.hasRobotsTxt = robotsRes.ok;
   } catch {
     seo.hasRobotsTxt = false;
