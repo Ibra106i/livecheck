@@ -4,6 +4,7 @@
 -- Projects table
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   site_url TEXT NOT NULL,
   client_name TEXT NOT NULL,
   client_email TEXT NOT NULL,
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS projects (
 -- Reports table (shared reports)
 CREATE TABLE IF NOT EXISTS reports (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   token TEXT UNIQUE NOT NULL,
   url TEXT NOT NULL,
   score INTEGER NOT NULL,
@@ -58,8 +60,10 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Indexes
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
 CREATE INDEX IF NOT EXISTS idx_reports_token ON reports(token);
 CREATE INDEX IF NOT EXISTS idx_scans_project_id ON scans(project_id);
 
