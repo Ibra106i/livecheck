@@ -96,11 +96,19 @@ function checkSSL(url: string): Promise<ScanResult['ssl']> {
         }
         const expiresAt = new Date(cert.valid_to);
         const daysUntilExpiry = Math.floor((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+        // Check actual certificate trust + expiry, not just HTTP status
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const socketAuthorized = (res.socket as any)?.authorized === true;
+        const certNotExpired = daysUntilExpiry > 0;
+        const valid = socketAuthorized && certNotExpired;
+
         resolve({
-          valid: res.statusCode !== undefined && res.statusCode < 400,
+          valid,
           issuer: cert.issuer?.O || cert.issuer?.CN || 'Unknown',
           expiresAt: expiresAt.toISOString(),
           daysUntilExpiry,
+          error: valid ? undefined : !socketAuthorized ? 'Certificate not trusted' : 'Certificate expired',
         });
       }
     );
