@@ -73,7 +73,7 @@ export default function NewAudit() {
   const toggleIssue = (key: string) => {
     setForm((f) => ({
       ...f,
-      knownIssues: f.knownIssues.includes(key) ? f.knownIssues.includes(key) ? f.knownIssues.filter((k) => k !== key) : [...f.knownIssues, key] : [...f.knownIssues, key],
+      knownIssues: f.knownIssues.includes(key) ? f.knownIssues.filter((k) => k !== key) : [...f.knownIssues, key],
     }));
   };
 

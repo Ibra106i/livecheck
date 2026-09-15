@@ -60,8 +60,12 @@ export default async function handler(req: Request): Promise<Response> {
         .eq('email', email.toLowerCase())
         .single();
 
+      // Always return generic message to prevent email enumeration
       if (existing) {
-        return jsonError('Email already registered', 409, headers);
+        return new Response(JSON.stringify({ message: 'If this email is not already registered, check your inbox for confirmation.' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...headers },
+        });
       }
 
       const hashedPassword = await hash(password, BCRYPT_ROUNDS);
