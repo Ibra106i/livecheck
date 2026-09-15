@@ -69,8 +69,8 @@ ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
--- Policies (service role can do everything)
-CREATE POLICY "Service role full access" ON projects FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON reports FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON scans FOR ALL USING (true);
-CREATE POLICY "Service role full access" ON users FOR ALL USING (true);
+-- Policies (only service_role can do anything — anon/authenticated get zero access)
+CREATE POLICY "Service role full access" ON projects FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON reports FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON scans FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON users FOR ALL TO service_role USING (true);
