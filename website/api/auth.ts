@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { hash, compare } from 'bcryptjs';
 import { signToken, corsHeaders, jsonError } from './_auth.js';
+import { checkRateLimit, rateLimitHeaders, getClientIP } from './_ratelimit.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -31,6 +32,12 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!supabase) {
     return jsonError('Auth not configured', 503, headers);
+  }
+
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(ip, 'auth', { windowMs: 60_000, maxRequests: 10 });
+  if (!rl.allowed) {
+    return jsonError('Too many requests, try again later', 429, { ...headers, ...rateLimitHeaders(rl) });
   }
 
   try {
