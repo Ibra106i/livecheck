@@ -21,6 +21,10 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo.componentStack);
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -29,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertTriangle className="mx-auto h-12 w-12 text-amber-400" />
             <h1 className="mt-4 text-xl font-semibold text-white">Something went wrong</h1>
             <p className="mt-2 text-sm text-zinc-500">
-              {this.state.error?.message || 'An unexpected error occurred.'}
+              An unexpected error occurred. Please try reloading the page.
             </p>
             <Button className="mt-6" onClick={() => window.location.reload()}>
               Reload Page
