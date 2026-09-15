@@ -1,15 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
-import { createHmac, randomBytes } from 'crypto';
+import { hash, compare } from 'bcryptjs';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
-function hashPassword(password: string, salt?: string): { hash: string; salt: string } {
-  const s = salt || randomBytes(16).toString('hex');
-  const hash = createHmac('sha256', s).update(password).digest('hex');
-  return { hash, salt: s };
+const BCRYPT_ROUNDS = 12;
+const MIN_PASSWORD_LENGTH = 10;
+
+function validatePassword(password: string): string | null {
+  if (password.length < MIN_PASSWORD_LENGTH) return `Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+  if (!/[A-Z]/.test(password)) return 'Password must contain an uppercase letter';
+  if (!/[a-z]/.test(password)) return 'Password must contain a lowercase letter';
+  if (!/[0-9]/.test(password)) return 'Password must contain a number';
+  return null;
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -49,7 +54,13 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (action === 'signup') {
-      const { hash, salt } = hashPassword(password);
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        return new Response(JSON.stringify({ error: passwordError }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
 
       const { data: existing } = await supabase
         .from('users')
@@ -64,11 +75,13 @@ export default async function handler(req: Request): Promise<Response> {
         });
       }
 
+      const hashedPassword = await hash(password, BCRYPT_ROUNDS);
+
       const { data, error } = await supabase
         .from('users')
         .insert({
           email: email.toLowerCase(),
-          password_hash: `${salt}:${hash}`,
+          password_hash: hashedPassword,
           agency_name: agencyName || null,
         })
         .select('id, email, agency_name')
@@ -96,10 +109,9 @@ export default async function handler(req: Request): Promise<Response> {
         });
       }
 
-      const [storedSalt, storedHash] = user.password_hash.split(':');
-      const { hash } = hashPassword(password, storedSalt);
+      const valid = await compare(password, user.password_hash);
 
-      if (hash !== storedHash) {
+      if (!valid) {
         return new Response(JSON.stringify({ error: 'Invalid email or password' }), {
           status: 401,
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
