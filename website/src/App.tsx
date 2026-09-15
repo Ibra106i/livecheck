@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ProjectsProvider } from './context/ProjectsContext';
 import { AuthProvider } from './context/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 const Landing = lazy(() => import('./pages/Landing'));
 const Login = lazy(() => import('./pages/Login'));
@@ -33,10 +34,10 @@ function App() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/audit" element={<NewAudit />} />
-                <Route path="/projects/:id" element={<ProjectStatus />} />
-                <Route path="/white-label" element={<WhiteLabel />} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/audit" element={<ProtectedRoute><NewAudit /></ProtectedRoute>} />
+                <Route path="/projects/:id" element={<ProtectedRoute><ProjectStatus /></ProtectedRoute>} />
+                <Route path="/white-label" element={<ProtectedRoute><WhiteLabel /></ProtectedRoute>} />
                 <Route path="/r/:token" element={<SharedReport />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
