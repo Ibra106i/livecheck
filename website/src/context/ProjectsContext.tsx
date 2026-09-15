@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { IntakeFormData, Project, WhiteLabelSettings } from '../lib/types';
 import { DEFAULT_WHITE_LABEL } from '../lib/mockData';
+import { useAuth } from './AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -43,6 +44,7 @@ function mapApiProject(apiProject: any): Project {
 }
 
 export function ProjectsProvider({ children }: { children: React.ReactNode }) {
+  const { authHeaders } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [whiteLabel, setWhiteLabel] = useState<WhiteLabelSettings>(() => {
     const saved = localStorage.getItem('livecheck_whitelabel_v1');
@@ -60,7 +62,9 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE}/api/projects`);
+      const res = await fetch(`${API_BASE}/api/projects`, {
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error('Failed to fetch projects');
       const data = await res.json();
       setProjects(data.map(mapApiProject));
@@ -84,7 +88,7 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
     async (form: IntakeFormData, useWhiteLabel: boolean, markupPrice?: number): Promise<Project> => {
       const res = await fetch(`${API_BASE}/api/scan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           url: form.siteUrl,
           clientName: form.clientName,

@@ -22,6 +22,7 @@ import { Label } from '../components/ui/label';
 import { Select } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { useProjects } from '../context/ProjectsContext';
+import { useAuth } from '../context/AuthContext';
 import type { IntakeFormData } from '../lib/types';
 import { BUILDER_TOOLS, CUSTOM_HOURLY_RATE, KNOWN_ISSUE_OPTIONS } from '../lib/mockData';
 
@@ -57,6 +58,7 @@ interface ScanResults {
 export default function NewAudit() {
   const navigate = useNavigate();
   const { createProject, whiteLabel } = useProjects();
+  const { authHeaders } = useAuth();
 
   const [step, setStep] = useState<Step>('intake');
   const [form, setForm] = useState<IntakeFormData>(emptyForm);
@@ -98,7 +100,7 @@ export default function NewAudit() {
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           url: form.siteUrl,
           clientName: form.clientName,
