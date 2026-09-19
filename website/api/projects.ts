@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { verifySession, corsHeaders, jsonError } from './_auth.js';
+import { corsHeaders, jsonError } from './_auth.js';
+import { getTenantContext, requirePermission } from './_tenant.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,10 +18,13 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError('Database not configured', 503, headers);
   }
 
-  const session = await verifySession(req);
-  if (!session) {
-    return jsonError('Unauthorized', 401, headers);
+  const tenant = await getTenantContext(req);
+  if (!tenant) {
+    return jsonError('Unauthorized — no organization context', 401, headers);
   }
+
+  const permError = requirePermission(tenant, 'projects:read');
+  if (permError) return permError;
 
   try {
     if (req.method === 'GET') {
@@ -32,7 +36,7 @@ export default async function handler(req: Request): Promise<Response> {
           .from('projects')
           .select('*')
           .eq('id', projectId)
-          .eq('user_id', session.sub)
+          .eq('organization_id', tenant.organizationId)
           .single();
 
         if (error || !data) {
@@ -48,7 +52,7 @@ export default async function handler(req: Request): Promise<Response> {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('user_id', session.sub)
+        .eq('organization_id', tenant.organizationId)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -61,6 +65,9 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (req.method === 'POST') {
+      const permErr = requirePermission(tenant, 'projects:write');
+      if (permErr) return permErr;
+
       const body = await req.json();
 
       const allowedFields = {
@@ -83,7 +90,8 @@ export default async function handler(req: Request): Promise<Response> {
 
       const project = {
         id: body.id || `lc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-        user_id: session.sub,
+        user_id: tenant.userId,
+        organization_id: tenant.organizationId,
         ...allowedFields,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

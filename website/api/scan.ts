@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { scanWebsite, calculateScore } from './scanner.js';
-import { verifySession, corsHeaders, jsonError } from './_auth.js';
+import { corsHeaders, jsonError } from './_auth.js';
+import { getTenantContext, requirePermission } from './_tenant.js';
 import { checkRateLimit, rateLimitHeaders, getClientIP } from './_ratelimit.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -23,10 +24,13 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError('Method not allowed', 405, headers);
   }
 
-  const session = await verifySession(req);
-  if (!session) {
-    return jsonError('Unauthorized', 401, headers);
+  const tenant = await getTenantContext(req);
+  if (!tenant) {
+    return jsonError('Unauthorized — no organization context', 401, headers);
   }
+
+  const permError = requirePermission(tenant, 'projects:write');
+  if (permError) return permError;
 
   const ip = getClientIP(req);
   const rl = checkRateLimit(ip, 'scan', { windowMs: 60_000, maxRequests: 5 });
@@ -58,7 +62,8 @@ export default async function handler(req: Request): Promise<Response> {
 
     const project = {
       id: projectId,
-      user_id: session.sub,
+      user_id: tenant.userId,
+      organization_id: tenant.organizationId,
       site_url: normalizedUrl,
       client_name: clientName,
       client_email: clientEmail,

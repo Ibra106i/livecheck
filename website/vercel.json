@@ -1,5 +1,15 @@
 {
   "env": {
     "SITE_ORIGIN": "https://livechecks.vercel.app"
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/organizations/:id/members/:user_id",
+      "destination": "/api/organizations-members"
+    },
+    {
+      "source": "/api/organizations/:id/members",
+      "destination": "/api/organizations-members"
+    }
+  ]
 }
