@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { corsHeaders, jsonError } from './_auth.js';
 import { getTenantContext, requirePermission } from './_tenant.js';
+import {
+  getSSOProvidersForOrg,
+  parseSAMLMetadata,
+  encryptSecret,
+  decryptSecret,
+  SSO_APP_URL,
+} from './_sso.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -312,6 +319,219 @@ export async function handleMembers(req: Request, organizationId: string): Promi
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('Members API error:', err);
+    return jsonError(message, 500, headers);
+  }
+}
+
+// ============================================================
+// SSO Configuration sub-handler
+// ============================================================
+
+export async function handleSSOConfig(req: Request, organizationId: string): Promise<Response> {
+  const headers = corsHeaders();
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers });
+  }
+
+  if (!supabase) {
+    return jsonError('Database not configured', 503, headers);
+  }
+
+  const tenant = await getTenantContext(req);
+  if (!tenant) {
+    return jsonError('Unauthorized', 401, headers);
+  }
+
+  if (tenant.organizationId !== organizationId) {
+    return jsonError('Access denied', 403, headers);
+  }
+
+  try {
+    // GET — list SSO providers for org
+    if (req.method === 'GET') {
+      const permError = requirePermission(tenant, 'settings:read');
+      if (permError) return permError;
+
+      const providers = await getSSOProvidersForOrg(organizationId);
+
+      // Mask secrets
+      const safe = providers.map(p => ({
+        ...p,
+        oidc_client_secret_encrypted: p.oidc_client_secret_encrypted ? '[ENCRYPTED]' : null,
+        idp_certificate: p.idp_certificate ? '[SET]' : null,
+      }));
+
+      return new Response(JSON.stringify({ providers: safe }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...headers },
+      });
+    }
+
+    // POST — create SSO provider
+    if (req.method === 'POST') {
+      const permError = requirePermission(tenant, 'settings:manage');
+      if (permError) return permError;
+
+      const body = await req.json();
+      const {
+        type,
+        name,
+        domain,
+        enabled,
+        sso_only,
+        jit_provisioning,
+        default_role,
+        // SAML
+        idp_metadata_url,
+        idp_entity_id,
+        idp_sso_url,
+        idp_certificate,
+        // OIDC
+        oidc_issuer,
+        oidc_client_id,
+        oidc_client_secret,
+        oidc_scopes,
+      } = body;
+
+      if (!type || !['saml', 'oidc'].includes(type)) {
+        return jsonError('type must be "saml" or "oidc"', 400, headers);
+      }
+
+      if (!name || typeof name !== 'string') {
+        return jsonError('name is required', 400, headers);
+      }
+
+      if (!domain || typeof domain !== 'string') {
+        return jsonError('domain is required', 400, headers);
+      }
+
+      const normalizedDomain = domain.toLowerCase().trim();
+
+      // Check domain is verified
+      const { data: verifiedDomain } = await supabase
+        .from('domain_verifications')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('domain', normalizedDomain)
+        .eq('verified', true)
+        .single();
+
+      if (!verifiedDomain) {
+        return jsonError('Domain must be verified before configuring SSO', 400, headers);
+      }
+
+      // Check if domain already has SSO
+      const { data: existingSSO } = await supabase
+        .from('sso_providers')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('domain', normalizedDomain)
+        .single();
+
+      if (existingSSO) {
+        return jsonError('SSO already configured for this domain. Update or delete the existing configuration.', 409, headers);
+      }
+
+      let samlConfig: Record<string, string | null> = {};
+      let oidcConfig: Record<string, unknown> = {};
+
+      if (type === 'saml') {
+        // Parse SAML metadata if provided
+        let finalIdpMetadataUrl = idp_metadata_url || null;
+        let finalIdpEntityId = idp_entity_id || null;
+        let finalIdpSsoUrl = idp_sso_url || null;
+        let finalIdpCertificate = idp_certificate || null;
+
+        if (finalIdpMetadataUrl) {
+          try {
+            const metadata = await parseSAMLMetadata(finalIdpMetadataUrl);
+            finalIdpEntityId = finalIdpEntityId || metadata.entityID;
+            finalIdpSsoUrl = finalIdpSsoUrl || metadata.ssoURL;
+            finalIdpCertificate = finalIdpCertificate || metadata.certificate;
+          } catch (e) {
+            console.warn('Failed to parse SAML metadata:', e);
+          }
+        }
+
+        if (!finalIdpSsoUrl) {
+          return jsonError('SAML requires idp_sso_url or idp_metadata_url', 400, headers);
+        }
+
+        samlConfig = {
+          idp_metadata_url: finalIdpMetadataUrl,
+          idp_entity_id: finalIdpEntityId,
+          idp_sso_url: finalIdpSsoUrl,
+          idp_certificate: finalIdpCertificate,
+        };
+      }
+
+      if (type === 'oidc') {
+        if (!oidc_issuer || !oidc_client_id || !oidc_client_secret) {
+          return jsonError('OIDC requires oidc_issuer, oidc_client_id, and oidc_client_secret', 400, headers);
+        }
+
+        // Encrypt the client secret
+        const encryptedSecret = await encryptSecret(oidc_client_secret);
+
+        oidcConfig = {
+          oidc_issuer: oidc_issuer,
+          oidc_client_id: oidc_client_id,
+          oidc_client_secret_encrypted: encryptedSecret,
+          oidc_scopes: oidc_scopes || ['openid', 'email', 'profile'],
+        };
+      }
+
+      const { data: ssoProvider, error: createError } = await supabase
+        .from('sso_providers')
+        .insert({
+          organization_id: organizationId,
+          type,
+          name: name.trim(),
+          domain: normalizedDomain,
+          enabled: enabled !== false,
+          sso_only: sso_only === true,
+          jit_provisioning: jit_provisioning === true,
+          default_role: default_role || 'member',
+          ...samlConfig,
+          ...oidcConfig,
+          metadata: {
+            callback_url: `${SSO_APP_URL}/api/auth/sso/callback`,
+            sp_entity_id: SSO_APP_URL,
+          },
+        })
+        .select('*')
+        .single();
+
+      if (createError) throw createError;
+
+      // Audit log
+      await supabase.from('audit_logs').insert({
+        organization_id: organizationId,
+        user_id: tenant.userId,
+        action: 'sso.provider_created',
+        metadata: { provider_id: ssoProvider.id, type, name, domain: normalizedDomain },
+      });
+
+      // Mask secret in response
+      const safeProvider = {
+        ...ssoProvider,
+        oidc_client_secret_encrypted: ssoProvider.oidc_client_secret_encrypted ? '[ENCRYPTED]' : null,
+      };
+
+      return new Response(JSON.stringify({
+        provider: safeProvider,
+        message: 'SSO provider created',
+      }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json', ...headers },
+      });
+    }
+
+    return jsonError('Method not allowed', 405, headers);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('SSO config API error:', err);
     return jsonError(message, 500, headers);
   }
 }
