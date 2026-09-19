@@ -10,6 +10,22 @@
     {
       "source": "/api/organizations/:id/members",
       "destination": "/api/organizations-members"
+    },
+    {
+      "source": "/api/organizations/:id/sso-config",
+      "destination": "/api/organizations-sso"
+    },
+    {
+      "source": "/api/auth/sso",
+      "destination": "/api/auth/sso"
+    },
+    {
+      "source": "/api/auth/sso/callback",
+      "destination": "/api/auth/sso-callback"
+    },
+    {
+      "source": "/api/auth/sso/metadata",
+      "destination": "/api/auth/sso-metadata"
     }
   ]
 }
