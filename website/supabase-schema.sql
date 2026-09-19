@@ -1,10 +1,61 @@
 -- Livecheck Database Schema
 -- Run this in Supabase SQL Editor
 
+-- ============================================================
+-- Multi-Tenant B2B Schema
+-- ============================================================
+
+-- Organizations (tenants)
+CREATE TABLE IF NOT EXISTS organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  settings JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Memberships (user <-> organization with role)
+CREATE TABLE IF NOT EXISTS memberships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  permissions JSONB DEFAULT '[]',
+  joined_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, organization_id)
+);
+
+-- Roles (per-organization role definitions)
+CREATE TABLE IF NOT EXISTS roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  permissions JSONB DEFAULT '[]',
+  is_default BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(organization_id, name)
+);
+
+-- Audit logs (SOC 2 compliance)
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id UUID REFERENCES organizations(id),
+  user_id UUID REFERENCES users(id),
+  action TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  ip_address INET,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ============================================================
+-- Core Tables
+-- ============================================================
+
 -- Projects table
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
   site_url TEXT NOT NULL,
   client_name TEXT NOT NULL,
   client_email TEXT NOT NULL,
@@ -56,24 +107,39 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   agency_name TEXT,
+  mfa_enabled BOOLEAN DEFAULT false,
+  mfa_methods JSONB DEFAULT '[]',
+  last_login_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_org_id ON projects(organization_id);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
 CREATE INDEX IF NOT EXISTS idx_reports_token ON reports(token);
 CREATE INDEX IF NOT EXISTS idx_scans_project_id ON scans(project_id);
+CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_memberships_org ON memberships(organization_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_org ON audit_logs(organization_id, created_at DESC);
 
 -- Row Level Security
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- Policies (only service_role can do anything — anon/authenticated get zero access)
+CREATE POLICY "Service role full access" ON organizations FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON memberships FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON roles FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON audit_logs FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON projects FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON reports FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON scans FOR ALL TO service_role USING (true);
