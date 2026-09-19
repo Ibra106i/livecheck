@@ -12,6 +12,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const NewAudit = lazy(() => import('./pages/NewAudit'));
 const ProjectStatus = lazy(() => import('./pages/ProjectStatus'));
 const WhiteLabel = lazy(() => import('./pages/WhiteLabel'));
+const OrgSettings = lazy(() => import('./pages/OrgSettings'));
 const SharedReport = lazy(() => import('./pages/SharedReport'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/audit" element={<ProtectedRoute><NewAudit /></ProtectedRoute>} />
                 <Route path="/projects/:id" element={<ProtectedRoute><ProjectStatus /></ProtectedRoute>} />
                 <Route path="/white-label" element={<ProtectedRoute><WhiteLabel /></ProtectedRoute>} />
+                <Route path="/settings/org" element={<ProtectedRoute><OrgSettings /></ProtectedRoute>} />
                 <Route path="/r/:token" element={<SharedReport />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

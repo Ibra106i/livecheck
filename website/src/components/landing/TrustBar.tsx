@@ -36,11 +36,9 @@ export function TrustBar() {
             </span>
           ))}
         </div>
-        <div className="mt-10 relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex flex-wrap items-center justify-center gap-x-8 gap-y-6 opacity-40 transition-all duration-300 hover:opacity-80">
+        <div className="mt-10">
+          <div className="w-full border-t border-border mb-8" />
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-6 opacity-40 transition-all duration-300 hover:opacity-80">
             {TOOL_LOGOS.map((tool) => (
               <span
                 key={tool.name}
