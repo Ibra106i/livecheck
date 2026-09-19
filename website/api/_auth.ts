@@ -11,6 +11,10 @@ export interface SessionPayload {
   sub: string;       // user id
   email: string;
   agency_name?: string;
+  org_id?: string;   // organization id
+  org_slug?: string; // organization slug
+  roles?: string[];  // user roles in org
+  permissions?: string[]; // user permissions in org
 }
 
 export async function signToken(payload: SessionPayload): Promise<string> {
@@ -18,6 +22,14 @@ export async function signToken(payload: SessionPayload): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
+    .sign(getSecretKey());
+}
+
+export async function signTokenShort-lived(payload: SessionPayload): Promise<string> {
+  return new SignJWT(payload as unknown as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('15m')
     .sign(getSecretKey());
 }
 
@@ -32,6 +44,10 @@ export async function verifySession(req: Request): Promise<SessionPayload | null
       sub: payload.sub as string,
       email: payload.email as string,
       agency_name: payload.agency_name as string | undefined,
+      org_id: payload.org_id as string | undefined,
+      org_slug: payload.org_slug as string | undefined,
+      roles: payload.roles as string[] | undefined,
+      permissions: payload.permissions as string[] | undefined,
     };
   } catch {
     return null;
@@ -42,8 +58,8 @@ export function corsHeaders(origin?: string): Record<string, string> {
   const allowedOrigin = origin || process.env.SITE_ORIGIN || 'https://livechecks.vercel.app';
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Org-Id',
   };
 }
 
