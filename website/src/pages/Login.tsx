@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, Shield } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useAuth } from '../context/AuthContext';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,12 +17,61 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const [ssoAvailable, setSsoAvailable] = useState<boolean | null>(null);
+  const [ssoType, setSsoType] = useState<string | null>(null);
+
+  const handleEmailBlur = async () => {
+    if (!email || !email.includes('@')) {
+      setSsoAvailable(null);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/sso`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSsoAvailable(data.sso_available);
+        setSsoType(data.type || null);
+      }
+    } catch {
+      setSsoAvailable(false);
+    }
+  };
+
+  const handleSSOLogin = async () => {
+    if (!email) { setError('Enter your email first'); return; }
+    setSsoLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/sso`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'SSO initiation failed');
+      }
+      const data = await res.json();
+      if (!data.sso_available) {
+        setError('No SSO configured for this email domain');
+        return;
+      }
+      window.location.href = data.redirect_url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'SSO login failed');
+      setSsoLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
       await login(email, password);
       navigate('/dashboard');
@@ -56,37 +107,66 @@ export default function Login() {
                   placeholder="you@agency.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={handleEmailBlur}
                   required
                 />
               </div>
 
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+              {ssoAvailable === true && (
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] p-3 text-sm text-emerald-300">
+                  <Shield className="h-4 w-4" />
+                  SSO available for this domain
+                </div>
+              )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Signing in...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="h-4 w-4" /> Sign In
-                  </>
-                )}
-              </Button>
+              {ssoAvailable !== true && (
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
+              {ssoAvailable === true && (
+                <Button
+                  type="button"
+                  className="w-full"
+                  variant="outline"
+                  onClick={handleSSOLogin}
+                  disabled={ssoLoading}
+                >
+                  {ssoLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Shield className="h-4 w-4" />
+                  )}
+                  Sign in with {ssoType === 'saml' ? 'SAML SSO' : 'SSO'}
+                </Button>
+              )}
+
+              {ssoAvailable !== true && (
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Signing in...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-4 w-4" /> Sign In
+                    </>
+                  )}
+                </Button>
+              )}
             </form>
 
             <div className="mt-4 text-center text-sm text-zinc-500">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link to="/signup" className="text-emerald-400 hover:underline">
                 Sign up
               </Link>
