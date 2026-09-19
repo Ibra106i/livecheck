@@ -125,7 +125,84 @@ CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_org ON memberships(organization_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_org ON audit_logs(organization_id, created_at DESC);
 
+-- ============================================================
+-- SSO & Enterprise Auth
+-- ============================================================
+
+-- SSO provider configuration per org
+CREATE TABLE IF NOT EXISTS sso_providers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('saml', 'oidc')),
+  name TEXT NOT NULL,
+  enabled BOOLEAN DEFAULT true,
+  sso_only BOOLEAN DEFAULT false,
+  jit_provisioning BOOLEAN DEFAULT false,
+
+  -- SAML fields
+  idp_metadata_url TEXT,
+  idp_entity_id TEXT,
+  idp_sso_url TEXT,
+  idp_certificate TEXT,
+
+  -- OIDC fields
+  oidc_issuer TEXT,
+  oidc_client_id TEXT,
+  oidc_client_secret_encrypted TEXT,
+  oidc_scopes TEXT[] DEFAULT ARRAY['openid', 'email', 'profile'],
+
+  -- Shared
+  domain TEXT NOT NULL,
+  default_role TEXT DEFAULT 'member',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+
+  UNIQUE(organization_id, domain)
+);
+
+-- External identity links (user <-> IdP)
+CREATE TABLE IF NOT EXISTS user_identities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  provider_user_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  last_login_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+
+  UNIQUE(provider, provider_user_id)
+);
+
+-- Domain verification tokens
+CREATE TABLE IF NOT EXISTS domain_verifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  domain TEXT NOT NULL,
+  verification_token TEXT NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  verified BOOLEAN DEFAULT false,
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+
+  UNIQUE(organization_id, domain)
+);
+
+-- Indexes for SSO tables
+CREATE INDEX IF NOT EXISTS idx_sso_providers_org ON sso_providers(organization_id);
+CREATE INDEX IF NOT EXISTS idx_sso_providers_domain ON sso_providers(domain);
+CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_identities_provider ON user_identities(provider, provider_user_id);
+CREATE INDEX IF NOT EXISTS idx_domain_verifications_org ON domain_verifications(organization_id);
+
+-- Add sso_only to users for tracking SSO-only accounts
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_provider TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash_optional BOOLEAN DEFAULT false;
+
+-- ============================================================
 -- Row Level Security
+-- ============================================================
+
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
@@ -134,6 +211,9 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sso_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_identities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE domain_verifications ENABLE ROW LEVEL SECURITY;
 
 -- Policies (only service_role can do anything — anon/authenticated get zero access)
 CREATE POLICY "Service role full access" ON organizations FOR ALL TO service_role USING (true);
@@ -144,3 +224,6 @@ CREATE POLICY "Service role full access" ON projects FOR ALL TO service_role USI
 CREATE POLICY "Service role full access" ON reports FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON scans FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON users FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON sso_providers FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON user_identities FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON domain_verifications FOR ALL TO service_role USING (true);
