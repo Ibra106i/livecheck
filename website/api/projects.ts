@@ -60,8 +60,9 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (req.method === 'POST') {
-      const permErr = requirePermission(tenant, 'projects:write');
-      if (permErr) return permErr;
+      if (!requirePermission(tenant, 'projects:write')) {
+        return jsonError('Permission denied', 403, headers);
+      }
 
       const body = await req.json();
 

@@ -11,7 +11,6 @@ export async function getTenantContext(req: Request): Promise<TenantContext | nu
 
   if (!supabase) return null;
 
-  // Find user by clerk_id
   const { data: user } = await supabase
     .from('users')
     .select('id')
@@ -35,10 +34,4 @@ export async function getTenantContext(req: Request): Promise<TenantContext | nu
     role: membership.role,
     permissions: membership.permissions || [],
   };
-}
-
-export function requirePermission(tenant: TenantContext | null, permission: string): boolean {
-  if (!tenant) return false;
-  if (tenant.permissions.includes('*')) return true;
-  return tenant.permissions.includes(permission);
 }

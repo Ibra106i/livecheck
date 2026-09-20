@@ -1,4 +1,4 @@
-import { verifyToken, clerkClient } from '@clerk/clerk-sdk-node';
+import { clerkClient } from '@clerk/clerk-sdk-node';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -17,10 +17,7 @@ export async function verifyClerkToken(req: Request): Promise<{ userId: string; 
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
   try {
-    const verified = await verifyToken(token, {
-      secretKey: process.env.CLERK_SECRET_KEY,
-      issuer: 'https://api.clerk.com',
-    } as Record<string, unknown>);
+    const verified = await clerkClient.verifyToken(token);
     return { userId: verified.sub, email: (verified.email as string) || '' };
   } catch {
     return null;
