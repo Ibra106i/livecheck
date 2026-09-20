@@ -1,9 +1,23 @@
--- Livecheck Database Schema
+﻿-- Livecheck Database Schema
 -- Run this in Supabase SQL Editor
 
 -- ============================================================
--- Multi-Tenant B2B Schema
+-- Core Tables (dependency order)
 -- ============================================================
+
+-- Users table (for auth) - must be first, referenced by all others
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  agency_name TEXT,
+  mfa_enabled BOOLEAN DEFAULT false,
+  mfa_methods JSONB DEFAULT '[]',
+  sso_provider TEXT,
+  password_hash_optional BOOLEAN DEFAULT false,
+  last_login_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
 -- Organizations (tenants)
 CREATE TABLE IF NOT EXISTS organizations (
@@ -46,10 +60,6 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   ip_address INET,
   created_at TIMESTAMPTZ DEFAULT now()
 );
-
--- ============================================================
--- Core Tables
--- ============================================================
 
 -- Projects table
 CREATE TABLE IF NOT EXISTS projects (
@@ -101,30 +111,6 @@ CREATE TABLE IF NOT EXISTS scans (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Users table (for auth)
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  agency_name TEXT,
-  mfa_enabled BOOLEAN DEFAULT false,
-  mfa_methods JSONB DEFAULT '[]',
-  last_login_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
-CREATE INDEX IF NOT EXISTS idx_projects_org_id ON projects(organization_id);
-CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
-CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
-CREATE INDEX IF NOT EXISTS idx_reports_token ON reports(token);
-CREATE INDEX IF NOT EXISTS idx_scans_project_id ON scans(project_id);
-CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
-CREATE INDEX IF NOT EXISTS idx_memberships_org ON memberships(organization_id);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_org ON audit_logs(organization_id, created_at DESC);
-
 -- ============================================================
 -- SSO & Enterprise Auth
 -- ============================================================
@@ -138,26 +124,19 @@ CREATE TABLE IF NOT EXISTS sso_providers (
   enabled BOOLEAN DEFAULT true,
   sso_only BOOLEAN DEFAULT false,
   jit_provisioning BOOLEAN DEFAULT false,
-
-  -- SAML fields
   idp_metadata_url TEXT,
   idp_entity_id TEXT,
   idp_sso_url TEXT,
   idp_certificate TEXT,
-
-  -- OIDC fields
   oidc_issuer TEXT,
   oidc_client_id TEXT,
   oidc_client_secret_encrypted TEXT,
   oidc_scopes TEXT[] DEFAULT ARRAY['openid', 'email', 'profile'],
-
-  -- Shared
   domain TEXT NOT NULL,
   default_role TEXT DEFAULT 'member',
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-
   UNIQUE(organization_id, domain)
 );
 
@@ -171,7 +150,6 @@ CREATE TABLE IF NOT EXISTS user_identities (
   metadata JSONB DEFAULT '{}',
   last_login_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
-
   UNIQUE(provider, provider_user_id)
 );
 
@@ -180,24 +158,32 @@ CREATE TABLE IF NOT EXISTS domain_verifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   domain TEXT NOT NULL,
-  verification_token TEXT NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  verification_token TEXT NOT NULL DEFAULT replace(gen_random_uuid()::text, '-', ''),
   verified BOOLEAN DEFAULT false,
   verified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
-
   UNIQUE(organization_id, domain)
 );
 
--- Indexes for SSO tables
+-- ============================================================
+-- Indexes
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_org_id ON projects(organization_id);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_reports_token ON reports(token);
+CREATE INDEX IF NOT EXISTS idx_scans_project_id ON scans(project_id);
+CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_memberships_org ON memberships(organization_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_org ON audit_logs(organization_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sso_providers_org ON sso_providers(organization_id);
 CREATE INDEX IF NOT EXISTS idx_sso_providers_domain ON sso_providers(domain);
 CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_identities_provider ON user_identities(provider, provider_user_id);
 CREATE INDEX IF NOT EXISTS idx_domain_verifications_org ON domain_verifications(organization_id);
-
--- Add sso_only to users for tracking SSO-only accounts
-ALTER TABLE users ADD COLUMN IF NOT EXISTS sso_provider TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash_optional BOOLEAN DEFAULT false;
 
 -- ============================================================
 -- Row Level Security
@@ -215,7 +201,7 @@ ALTER TABLE sso_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_identities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE domain_verifications ENABLE ROW LEVEL SECURITY;
 
--- Policies (only service_role can do anything — anon/authenticated get zero access)
+-- Policies (only service_role can do anything)
 CREATE POLICY "Service role full access" ON organizations FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON memberships FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON roles FOR ALL TO service_role USING (true);
