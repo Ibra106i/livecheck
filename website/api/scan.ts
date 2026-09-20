@@ -1,17 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import { scanWebsite, calculateScore } from './scanner.js';
-import { corsHeaders, jsonError } from './_auth.js';
-import { getTenantContext, requirePermission } from './_tenant.js';
+import { supabase, corsHeaders, jsonError, requirePermission } from './_clerk.js';
+import { getTenantContext } from './_tenant.js';
 import { checkRateLimit, rateLimitHeaders, getClientIP } from './_ratelimit.js';
-
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-}
-
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default async function handler(req: Request): Promise<Response> {
   const headers = corsHeaders();

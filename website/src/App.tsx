@@ -6,16 +6,17 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 const Landing = lazy(() => import('./pages/Landing'));
-const Login = lazy(() => import('./pages/Login'));
-const Signup = lazy(() => import('./pages/Signup'));
+const ClerkLogin = lazy(() => import('./pages/ClerkLogin'));
+const ClerkSignup = lazy(() => import('./pages/ClerkSignup'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const NewAudit = lazy(() => import('./pages/NewAudit'));
 const ProjectStatus = lazy(() => import('./pages/ProjectStatus'));
 const WhiteLabel = lazy(() => import('./pages/WhiteLabel'));
 const OrgSettings = lazy(() => import('./pages/OrgSettings'));
-const SSOCallback = lazy(() => import('./pages/SSOCallback'));
 const SharedReport = lazy(() => import('./pages/SharedReport'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const AuditLog = lazy(() => import('./pages/AuditLog'));
+const AcceptInvite = lazy(() => import('./pages/AcceptInvite'));
 
 function Loading() {
   return (
@@ -34,14 +35,15 @@ function App() {
             <Suspense fallback={<Loading />}>
               <Routes>
                 <Route path="/" element={<Landing />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
+                <Route path="/login" element={<ClerkLogin />} />
+                <Route path="/signup" element={<ClerkSignup />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/audit" element={<ProtectedRoute><NewAudit /></ProtectedRoute>} />
                 <Route path="/projects/:id" element={<ProtectedRoute><ProjectStatus /></ProtectedRoute>} />
                 <Route path="/white-label" element={<ProtectedRoute><WhiteLabel /></ProtectedRoute>} />
                 <Route path="/settings/org" element={<ProtectedRoute><OrgSettings /></ProtectedRoute>} />
-                <Route path="/sso-callback" element={<SSOCallback />} />
+                <Route path="/settings/audit" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
+                <Route path="/invite/:token" element={<AcceptInvite />} />
                 <Route path="/r/:token" element={<SharedReport />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

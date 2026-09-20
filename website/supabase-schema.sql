@@ -5,16 +5,12 @@
 -- Core Tables (dependency order)
 -- ============================================================
 
--- Users table (for auth) - must be first, referenced by all others
+-- Users table (synced from Clerk via webhooks)
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_id TEXT UNIQUE,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
   agency_name TEXT,
-  mfa_enabled BOOLEAN DEFAULT false,
-  mfa_methods JSONB DEFAULT '[]',
-  sso_provider TEXT,
-  password_hash_optional BOOLEAN DEFAULT false,
   last_login_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -165,6 +161,19 @@ CREATE TABLE IF NOT EXISTS domain_verifications (
   UNIQUE(organization_id, domain)
 );
 
+-- Invitations (email-based team invites)
+CREATE TABLE IF NOT EXISTS invitations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  invited_by UUID REFERENCES users(id),
+  token TEXT UNIQUE NOT NULL DEFAULT replace(gen_random_uuid()::text, '-', ''),
+  accepted BOOLEAN DEFAULT false,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '7 days'),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ============================================================
 -- Indexes
 -- ============================================================
@@ -184,6 +193,10 @@ CREATE INDEX IF NOT EXISTS idx_sso_providers_domain ON sso_providers(domain);
 CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_identities_provider ON user_identities(provider, provider_user_id);
 CREATE INDEX IF NOT EXISTS idx_domain_verifications_org ON domain_verifications(organization_id);
+CREATE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id);
+CREATE INDEX IF NOT EXISTS idx_invitations_org ON invitations(organization_id);
+CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
+CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
 
 -- ============================================================
 -- Row Level Security

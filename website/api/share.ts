@@ -1,15 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
-import { corsHeaders, jsonError } from './_auth.js';
-
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+import { supabase, corsHeaders, jsonError } from './_clerk.js';
 
 const MAX_SUMMARY_LENGTH = 5000;
 const MAX_RESULTS_LENGTH = 50000;

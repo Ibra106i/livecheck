@@ -1,11 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { corsHeaders, jsonError } from './_auth.js';
-import { getTenantContext, requirePermission } from './_tenant.js';
-
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+import { supabase, corsHeaders, jsonError, requirePermission } from './_clerk.js';
+import { getTenantContext } from './_tenant.js';
 
 export default async function handler(req: Request): Promise<Response> {
   const headers = corsHeaders();

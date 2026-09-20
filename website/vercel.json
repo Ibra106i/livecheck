@@ -12,8 +12,8 @@
       "destination": "/api/organizations"
     },
     {
-      "source": "/api/organizations/:id/sso-config",
-      "destination": "/api/organizations"
+      "source": "/api/accept-invite/:token",
+      "destination": "/api/accept-invite"
     }
   ]
 }

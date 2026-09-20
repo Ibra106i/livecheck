@@ -1,12 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useAuth as useClerkAuth, useUser as useClerkUser, useSession } from '@clerk/react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
-
-interface User {
-  id: string;
-  email: string;
-  agency_name?: string;
-}
 
 interface Organization {
   id: string;
@@ -16,7 +11,7 @@ interface Organization {
 }
 
 interface AuthContextValue {
-  user: User | null;
+  user: { id: string; email: string; agency_name?: string } | null;
   token: string | null;
   organization: Organization | null;
   organizations: Organization[];
@@ -33,19 +28,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const AUTH_KEY = 'livecheck_auth';
-const TOKEN_KEY = 'livecheck_token';
 const ORG_KEY = 'livecheck_org';
 const ORGS_KEY = 'livecheck_orgs';
-
-function isTokenExpired(token: string): boolean {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.exp * 1000 < Date.now();
-  } catch {
-    return true;
-  }
-}
 
 function getDefaultPermissions(role: string): string[] {
   switch (role) {
@@ -61,31 +45,14 @@ function getDefaultPermissions(role: string): string[] {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem(AUTH_KEY);
-    const savedToken = localStorage.getItem(TOKEN_KEY);
-    if (saved && savedToken && !isTokenExpired(savedToken)) {
-      try {
-        return JSON.parse(saved);
-      } catch { /* ignore */ }
-    }
-    localStorage.removeItem(AUTH_KEY);
-    localStorage.removeItem(TOKEN_KEY);
-    return null;
-  });
-
-  const [token, setToken] = useState<string | null>(() => {
-    const savedToken = localStorage.getItem(TOKEN_KEY);
-    if (savedToken && !isTokenExpired(savedToken)) return savedToken;
-    return null;
-  });
+  const { isSignedIn, signOut, getToken } = useClerkAuth();
+  const { user: clerkUser } = useClerkUser();
+  const { session } = useSession();
 
   const [organization, setOrganization] = useState<Organization | null>(() => {
     const saved = localStorage.getItem(ORG_KEY);
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch { /* ignore */ }
+      try { return JSON.parse(saved); } catch { /* ignore */ }
     }
     return null;
   });
@@ -93,123 +60,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [organizations, setOrganizations] = useState<Organization[]>(() => {
     const saved = localStorage.getItem(ORGS_KEY);
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch { /* ignore */ }
+      try { return JSON.parse(saved); } catch { /* ignore */ }
     }
     return [];
   });
 
-  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
+  // Get Clerk session token
   useEffect(() => {
-    if (token && isTokenExpired(token)) {
-      setUser(null);
+    if (session) {
+      session.getToken().then((t) => setToken(t));
+    } else {
       setToken(null);
-      setOrganization(null);
-      setOrganizations([]);
-      localStorage.removeItem(AUTH_KEY);
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(ORG_KEY);
-      localStorage.removeItem(ORGS_KEY);
     }
-  }, [token]);
+  }, [session]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setLoading(true);
+  // Fetch user's organizations from our backend
+  const fetchOrganizations = useCallback(async (clerkToken: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', email, password }),
+      const res = await fetch(`${API_BASE}/api/organizations`, {
+        headers: { Authorization: `Bearer ${clerkToken}` },
       });
+      if (res.ok) {
+        const data = await res.json();
+        const orgs = data.organizations || [];
+        setOrganizations(orgs);
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Login failed');
+        // Restore or set default org
+        const savedOrg = localStorage.getItem(ORG_KEY);
+        if (savedOrg) {
+          try {
+            const parsed = JSON.parse(savedOrg);
+            if (orgs.some((o: Organization) => o.id === parsed.id)) {
+              setOrganization(parsed);
+              return;
+            }
+          } catch { /* ignore */ }
+        }
+        if (orgs.length > 0) {
+          setOrganization(orgs[0]);
+          localStorage.setItem(ORG_KEY, JSON.stringify(orgs[0]));
+        }
       }
-
-      const { user: userData, organization: defaultOrg, organizations: orgs, token: jwt } = await res.json();
-
-      setUser(userData);
-      setToken(jwt);
-      setOrganization(defaultOrg);
-      setOrganizations(orgs);
-
-      localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
-      localStorage.setItem(TOKEN_KEY, jwt);
-      if (defaultOrg) localStorage.setItem(ORG_KEY, JSON.stringify(defaultOrg));
-      if (orgs) localStorage.setItem(ORGS_KEY, JSON.stringify(orgs));
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('Failed to fetch organizations:', err);
     }
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, orgName?: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'signup', email, password, agencyName: orgName }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Signup failed');
-      }
-
-      const { user: userData, organization: defaultOrg, organizations: orgs, token: jwt } = await res.json();
-
-      setUser(userData);
-      setToken(jwt);
-      setOrganization(defaultOrg);
-      setOrganizations(orgs);
-
-      localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
-      localStorage.setItem(TOKEN_KEY, jwt);
-      if (defaultOrg) localStorage.setItem(ORG_KEY, JSON.stringify(defaultOrg));
-      if (orgs) localStorage.setItem(ORGS_KEY, JSON.stringify(orgs));
-    } finally {
-      setLoading(false);
+  // Fetch orgs when token becomes available
+  useEffect(() => {
+    if (token && isSignedIn) {
+      fetchOrganizations(token);
     }
+  }, [token, isSignedIn, fetchOrganizations]);
+
+  const login = useCallback(async (_email: string, _password: string) => {
+    // Clerk handles login via its own UI - this is kept for API compatibility
+    // The actual login is handled by Clerk's SignIn component
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    setToken(null);
+  const signup = useCallback(async (_email: string, _password: string, _orgName?: string) => {
+    // Clerk handles signup via its own UI
+  }, []);
+
+  const logout = useCallback(async () => {
     setOrganization(null);
     setOrganizations([]);
-    localStorage.removeItem(AUTH_KEY);
-    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ORG_KEY);
     localStorage.removeItem(ORGS_KEY);
-  }, []);
+    await signOut();
+  }, [signOut]);
 
   const switchOrganization = useCallback(async (orgId: string) => {
-    if (!token) return;
-
-    const res = await fetch(`${API_BASE}/api/auth`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ action: 'switch-org', org_id: orgId }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Failed to switch organization');
+    const org = organizations.find((o) => o.id === orgId);
+    if (org) {
+      setOrganization(org);
+      localStorage.setItem(ORG_KEY, JSON.stringify(org));
     }
-
-    const { organization: newOrg, token: newToken } = await res.json();
-
-    setOrganization(newOrg);
-    setToken(newToken);
-    localStorage.setItem(ORG_KEY, JSON.stringify(newOrg));
-    localStorage.setItem(TOKEN_KEY, newToken);
-  }, [token]);
+  }, [organizations]);
 
   const createOrganization = useCallback(async (name: string): Promise<Organization> => {
     if (!token) throw new Error('Not authenticated');
@@ -229,29 +158,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const { organization: newOrg } = await res.json();
-
-    // Add to organizations list and switch to it
     const updatedOrgs = [...organizations, newOrg];
     setOrganizations(updatedOrgs);
     setOrganization(newOrg);
     localStorage.setItem(ORGS_KEY, JSON.stringify(updatedOrgs));
     localStorage.setItem(ORG_KEY, JSON.stringify(newOrg));
-
-    // Get new token with updated org context
-    const switchRes = await fetch(`${API_BASE}/api/auth`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ action: 'switch-org', org_id: newOrg.id }),
-    });
-
-    if (switchRes.ok) {
-      const { token: newToken } = await switchRes.json();
-      setToken(newToken);
-      localStorage.setItem(TOKEN_KEY, newToken);
-    }
 
     return newOrg;
   }, [token, organizations]);
@@ -265,6 +176,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return headers;
   }, [token, organization]);
 
+  const user = clerkUser ? {
+    id: clerkUser.id,
+    email: clerkUser.emailAddresses[0]?.emailAddress || '',
+    agency_name: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || undefined,
+  } : null;
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -273,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       organizations,
       roles: organization ? [organization.role] : [],
       permissions: organization ? getDefaultPermissions(organization.role) : [],
-      loading,
+      loading: false,
       login,
       signup,
       logout,

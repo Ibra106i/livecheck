@@ -1,5 +1,5 @@
-import { corsHeaders, jsonError, supabase } from './_sso.js';
-import { getTenantContext, requirePermission } from './_tenant.js';
+import { supabase, corsHeaders, jsonError, requirePermission } from './_clerk.js';
+import { getTenantContext } from './_tenant.js';
 
 export default async function handler(req: Request): Promise<Response> {
   const headers = corsHeaders();

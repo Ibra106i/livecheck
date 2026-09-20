@@ -1,10 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-import { corsHeaders, jsonError } from './_auth.js';
+import { corsHeaders, jsonError, supabase } from './_clerk.js';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-export const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+export { supabase };
 
 export const SSO_APP_URL = process.env.SSO_APP_URL || process.env.SITE_ORIGIN || 'https://livechecks.vercel.app';
 export const SSO_ENCRYPTION_KEY = process.env.SSO_ENCRYPTION_KEY || '';
@@ -375,4 +371,4 @@ export async function findOrCreateSSOUser(params: {
 // Response helpers
 // ============================================================
 
-export { corsHeaders, jsonError } from './_auth.js';
+export { corsHeaders, jsonError } from './_clerk.js';
