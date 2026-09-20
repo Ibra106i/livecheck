@@ -19,7 +19,8 @@ export async function verifyClerkToken(req: Request): Promise<{ userId: string; 
   try {
     const verified = await verifyToken(token, {
       secretKey: process.env.CLERK_SECRET_KEY,
-    });
+      issuer: 'https://api.clerk.com',
+    } as Record<string, unknown>);
     return { userId: verified.sub, email: (verified.email as string) || '' };
   } catch {
     return null;

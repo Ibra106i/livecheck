@@ -23,7 +23,7 @@ export default async function handler(req: Request): Promise<Response> {
       const { data: domains, error } = await supabase
         .from('domain_verifications')
         .select('id, domain, verified, verified_at, created_at')
-        .eq('organization_id', tenant.organizationId);
+        .eq('organization_id', tenant.orgId);
 
       if (error) throw error;
 
@@ -35,8 +35,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     // POST — initiate domain verification
     if (req.method === 'POST') {
-      const permError = requirePermission(tenant, 'settings:manage');
-      if (permError) return permError;
+      if (!requirePermission(tenant, 'settings:manage')) {
+        return jsonError('Permission denied', 403, headers);
+      }
 
       const body = await req.json();
       const { domain } = body;
@@ -60,7 +61,7 @@ export default async function handler(req: Request): Promise<Response> {
         .eq('verified', true)
         .single();
 
-      if (existing && existing.organization_id !== tenant.organizationId) {
+      if (existing && existing.organization_id !== tenant.orgId) {
         return jsonError('Domain is already verified by another organization', 409, headers);
       }
 
@@ -68,7 +69,7 @@ export default async function handler(req: Request): Promise<Response> {
       const { data: verification, error: upsertError } = await supabase
         .from('domain_verifications')
         .upsert({
-          organization_id: tenant.organizationId,
+          organization_id: tenant.orgId,
           domain: normalizedDomain,
         }, { onConflict: 'organization_id,domain' })
         .select('id, domain, verification_token, verified')
@@ -78,7 +79,7 @@ export default async function handler(req: Request): Promise<Response> {
 
       // Audit log
       await supabase.from('audit_logs').insert({
-        organization_id: tenant.organizationId,
+        organization_id: tenant.orgId,
         user_id: tenant.userId,
         action: 'domain.verification_initiated',
         metadata: { domain: normalizedDomain },
@@ -102,8 +103,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     // PUT — verify domain (check DNS)
     if (req.method === 'PUT') {
-      const permError = requirePermission(tenant, 'settings:manage');
-      if (permError) return permError;
+      if (!requirePermission(tenant, 'settings:manage')) {
+        return jsonError('Permission denied', 403, headers);
+      }
 
       const body = await req.json();
       const { domain_id } = body;
@@ -117,7 +119,7 @@ export default async function handler(req: Request): Promise<Response> {
         .from('domain_verifications')
         .select('*')
         .eq('id', domain_id)
-        .eq('organization_id', tenant.organizationId)
+        .eq('organization_id', tenant.orgId)
         .single();
 
       if (fetchError || !verification) {
@@ -154,7 +156,7 @@ export default async function handler(req: Request): Promise<Response> {
 
           // Audit log
           await supabase.from('audit_logs').insert({
-            organization_id: tenant.organizationId,
+            organization_id: tenant.orgId,
             user_id: tenant.userId,
             action: 'domain.verified',
             metadata: { domain: verification.domain },
@@ -185,8 +187,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     // DELETE — remove domain
     if (req.method === 'DELETE') {
-      const permError = requirePermission(tenant, 'settings:manage');
-      if (permError) return permError;
+      if (!requirePermission(tenant, 'settings:manage')) {
+        return jsonError('Permission denied', 403, headers);
+      }
 
       const url = new URL(req.url);
       const domainId = url.searchParams.get('domain_id');
@@ -199,7 +202,7 @@ export default async function handler(req: Request): Promise<Response> {
         .from('domain_verifications')
         .delete()
         .eq('id', domainId)
-        .eq('organization_id', tenant.organizationId);
+        .eq('organization_id', tenant.orgId);
 
       if (error) throw error;
 

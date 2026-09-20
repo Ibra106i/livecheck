@@ -30,7 +30,7 @@ export default function AcceptInvite() {
 
     const acceptInvite = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/accept-invite/${token}`, {
+        const res = await fetch(`${API_BASE}/api/invitations/accept/${token}`, {
           method: 'POST',
           headers: authHeaders(),
         });
@@ -41,7 +41,7 @@ export default function AcceptInvite() {
         }
 
         const data = await res.json();
-        setOrgName(data.organization_name || 'your organization');
+        setOrgName(data.organization?.name || 'your organization');
         setStatus('success');
       } catch (err) {
         setStatus('error');

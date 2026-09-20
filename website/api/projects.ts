@@ -17,8 +17,9 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError('Unauthorized — no organization context', 401, headers);
   }
 
-  const permError = requirePermission(tenant, 'projects:read');
-  if (permError) return permError;
+  if (!requirePermission(tenant, 'projects:read')) {
+    return jsonError('Permission denied', 403, headers);
+  }
 
   try {
     if (req.method === 'GET') {
@@ -30,7 +31,7 @@ export default async function handler(req: Request): Promise<Response> {
           .from('projects')
           .select('*')
           .eq('id', projectId)
-          .eq('organization_id', tenant.organizationId)
+          .eq('organization_id', tenant.orgId)
           .single();
 
         if (error || !data) {
@@ -46,7 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('organization_id', tenant.organizationId)
+        .eq('organization_id', tenant.orgId)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -85,7 +86,7 @@ export default async function handler(req: Request): Promise<Response> {
       const project = {
         id: body.id || `lc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
         user_id: tenant.userId,
-        organization_id: tenant.organizationId,
+        organization_id: tenant.orgId,
         ...allowedFields,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

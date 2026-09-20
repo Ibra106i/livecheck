@@ -19,8 +19,9 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError('Unauthorized — no organization context', 401, headers);
   }
 
-  const permError = requirePermission(tenant, 'projects:write');
-  if (permError) return permError;
+  if (!requirePermission(tenant, 'projects:write')) {
+    return jsonError('Permission denied', 403, headers);
+  }
 
   const ip = getClientIP(req);
   const rl = checkRateLimit(ip, 'scan', { windowMs: 60_000, maxRequests: 5 });
@@ -53,7 +54,7 @@ export default async function handler(req: Request): Promise<Response> {
     const project = {
       id: projectId,
       user_id: tenant.userId,
-      organization_id: tenant.organizationId,
+      organization_id: tenant.orgId,
       site_url: normalizedUrl,
       client_name: clientName,
       client_email: clientEmail,

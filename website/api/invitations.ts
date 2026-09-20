@@ -1,4 +1,4 @@
-import { supabase, corsHeaders, jsonError, requirePermission } from './_clerk.js';
+import { supabase, corsHeaders, jsonError, requirePermission, verifyClerkToken } from './_clerk.js';
 import { getTenantContext } from './_tenant.js';
 
 export default async function handler(req: Request): Promise<Response> {
@@ -10,6 +10,13 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!supabase) {
     return jsonError('Database not configured', 503, headers);
+  }
+
+  const url = new URL(req.url);
+
+  // Route: /api/invitations/accept/:token
+  if (url.pathname.includes('/accept/')) {
+    return handleAcceptInvite(req, url);
   }
 
   const tenant = await getTenantContext(req);
@@ -68,7 +75,6 @@ export default async function handler(req: Request): Promise<Response> {
         .single();
 
       if (existingUser) {
-        // Check if already a member
         const { data: existingMember } = await supabase
           .from('memberships')
           .select('id')
@@ -95,7 +101,6 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonError('Invitation already pending for this email', 409, headers);
       }
 
-      // Create invitation
       const { data: invitation, error: inviteError } = await supabase
         .from('invitations')
         .insert({
@@ -109,7 +114,6 @@ export default async function handler(req: Request): Promise<Response> {
 
       if (inviteError) throw inviteError;
 
-      // Audit log
       await supabase.from('audit_logs').insert({
         organization_id: tenant.orgId,
         user_id: tenant.userId,
@@ -117,8 +121,6 @@ export default async function handler(req: Request): Promise<Response> {
         metadata: { email: normalizedEmail, role: validRole, invitation_id: invitation.id },
       });
 
-      // TODO: Send invitation email via Resend/SendGrid
-      // For now, return the token so it can be shared manually
       return new Response(JSON.stringify({
         invitation: {
           id: invitation.id,
@@ -134,15 +136,13 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    // DELETE /api/invitations/:id — revoke invitation
+    // DELETE /api/invitations?id=... — revoke invitation
     if (req.method === 'DELETE') {
       if (!requirePermission(tenant, 'members:manage')) {
         return jsonError('Permission denied', 403, headers);
       }
 
-      const url = new URL(req.url);
       const invitationId = url.searchParams.get('id');
-
       if (!invitationId) {
         return jsonError('Invitation id is required', 400, headers);
       }
@@ -165,6 +165,119 @@ export default async function handler(req: Request): Promise<Response> {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     console.error('Invitations API error:', err);
+    return jsonError(message, 500, headers);
+  }
+}
+
+// ============================================================
+// Accept invitation handler
+// ============================================================
+
+async function handleAcceptInvite(req: Request, url: URL): Promise<Response> {
+  const headers = corsHeaders();
+
+  if (req.method !== 'POST') {
+    return jsonError('Method not allowed', 405, headers);
+  }
+
+  const auth = await verifyClerkToken(req);
+  if (!auth) {
+    return jsonError('Unauthorized', 401, headers);
+  }
+
+  const pathParts = url.pathname.split('/');
+  const token = pathParts[pathParts.length - 1];
+
+  if (!token) {
+    return jsonError('Invitation token is required', 400, headers);
+  }
+
+  try {
+    const { data: invitation, error: inviteError } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('token', token)
+      .eq('accepted', false)
+      .single();
+
+    if (inviteError || !invitation) {
+      return jsonError('Invalid or expired invitation', 404, headers);
+    }
+
+    if (new Date(invitation.expires_at) < new Date()) {
+      return jsonError('Invitation has expired', 410, headers);
+    }
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', auth.userId)
+      .single();
+
+    if (!user) {
+      return jsonError('User not found in system', 404, headers);
+    }
+
+    const { data: existing } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('organization_id', invitation.organization_id)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('invitations')
+        .update({ accepted: true })
+        .eq('id', invitation.id);
+
+      return new Response(JSON.stringify({
+        message: 'Already a member of this organization',
+        organization_id: invitation.organization_id,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...headers },
+      });
+    }
+
+    const { error: memberError } = await supabase
+      .from('memberships')
+      .insert({
+        user_id: user.id,
+        organization_id: invitation.organization_id,
+        role: invitation.role,
+      });
+
+    if (memberError) throw memberError;
+
+    await supabase
+      .from('invitations')
+      .update({ accepted: true })
+      .eq('id', invitation.id);
+
+    await supabase.from('audit_logs').insert({
+      organization_id: invitation.organization_id,
+      user_id: user.id,
+      action: 'member.invitation_accepted',
+      metadata: { invitation_id: invitation.id, role: invitation.role },
+    });
+
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id, name, slug')
+      .eq('id', invitation.organization_id)
+      .single();
+
+    return new Response(JSON.stringify({
+      message: 'Invitation accepted',
+      organization: org,
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...headers },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Accept invitation error:', err);
     return jsonError(message, 500, headers);
   }
 }
