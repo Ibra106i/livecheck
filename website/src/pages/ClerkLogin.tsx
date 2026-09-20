@@ -7,12 +7,12 @@ export default function ClerkLogin() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-8">
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+        <div className="mb-8 flex flex-col items-center">
           <Link to="/" className="inline-flex items-center gap-2">
             <Logo className="h-8 w-8" />
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-white">Welcome Back</h1>
-          <p className="mt-1 text-sm text-zinc-500">Sign in to your agency dashboard</p>
+          <h1 className="mt-4 text-center text-2xl font-bold text-white">Welcome Back</h1>
+          <p className="mt-1 text-center text-sm text-zinc-500">Sign in to your agency dashboard</p>
         </div>
 
         <SignIn
