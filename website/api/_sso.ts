@@ -267,7 +267,8 @@ export async function findOrCreateSSOUser(params: {
     await supabase
       .from('user_identities')
       .update({ last_login_at: new Date().toISOString() })
-      .eq('id', existingIdentity.id);
+      .eq('user_id', existingIdentity.user_id)
+      .eq('provider', provider);
 
     await supabase
       .from('users')

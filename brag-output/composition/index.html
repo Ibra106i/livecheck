@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #030712;
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .scene.active { opacity: 1; pointer-events: auto; }
+
+      /* Background grid */
+      .bg-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(to right, rgba(30,45,61,0.3) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(30,45,61,0.3) 1px, transparent 1px);
+        background-size: 48px 48px;
+        opacity: 0.15;
+      }
+
+      /* Radial glow */
+      .bg-glow {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 20% 15%, rgba(6,214,160,0.2) 0%, transparent 50%),
+                    radial-gradient(ellipse at 85% 0%, rgba(96,165,250,0.12) 0%, transparent 40%);
+      }
+
+      /* Scene 1: Hook */
+      #scene1 .stat-number {
+        font-size: 160px;
+        font-weight: 800;
+        color: #06d6a0;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        text-shadow: 0 0 60px rgba(6,214,160,0.4);
+      }
+      #scene1 .stat-label {
+        font-size: 28px;
+        font-weight: 500;
+        color: #94a3b8;
+        margin-top: 16px;
+        letter-spacing: 0.02em;
+      }
+
+      /* Scene 2: Concept */
+      #scene2 .line1 {
+        font-size: 24px;
+        font-weight: 500;
+        color: #94a3b8;
+      }
+      #scene2 .line2 {
+        font-size: 80px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #34d399, #6ee7b7);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+        margin: 16px 0;
+        filter: drop-shadow(0 0 20px rgba(52,211,153,0.3));
+      }
+      #scene2 .line3 {
+        font-size: 32px;
+        font-weight: 600;
+        color: #f1f5f9;
+      }
+
+      /* Scene 3: Intake Form */
+      #scene3 .form-card {
+        background: rgba(15,27,42,0.9);
+        border: 1px solid #1e2d3d;
+        border-radius: 16px;
+        padding: 48px;
+        width: 640px;
+        backdrop-filter: blur(20px);
+      }
+      #scene3 .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+      }
+      #scene3 .form-input {
+        width: 100%;
+        padding: 14px 16px;
+        background: #0b1320;
+        border: 1px solid #1e2d3d;
+        border-radius: 8px;
+        color: #f1f5f9;
+        font-size: 16px;
+        font-family: 'Inter', sans-serif;
+        margin-bottom: 24px;
+      }
+      #scene3 .form-input::placeholder { color: #64748b; }
+      #scene3 .form-input.focused { border-color: #06d6a0; box-shadow: 0 0 0 3px rgba(6,214,160,0.15); }
+      #scene3 .cta-btn {
+        width: 100%;
+        padding: 16px 24px;
+        background: #06d6a0;
+        border: none;
+        border-radius: 8px;
+        color: #030712;
+        font-size: 16px;
+        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+      }
+      #scene3 .cta-btn:hover { background: #10f9b8; }
+      #scene3 .cta-arrow {
+        display: inline-block;
+        transition: transform 0.2s;
+      }
+      #scene3 .cta-btn.clicked .cta-arrow { transform: translateX(4px); }
+
+      /* Scene 4: Scan */
+      #scene4 .scan-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(6,214,160,0.1);
+        border: 2px solid rgba(6,214,160,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 24px;
+      }
+      #scene4 .scan-icon svg { width: 36px; height: 36px; color: #06d6a0; }
+      #scene4 .scan-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #f1f5f9;
+        margin-bottom: 8px;
+      }
+      #scene4 .scan-url {
+        font-size: 16px;
+        color: #64748b;
+        font-family: 'JetBrains Mono', monospace;
+      }
+      #scene4 .scan-pulse {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 2px solid rgba(6,214,160,0.4);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+      }
+
+      /* Scene 5: Results */
+      #scene5 .results-card {
+        background: rgba(15,27,42,0.9);
+        border: 1px solid #1e2d3d;
+        border-radius: 16px;
+        padding: 48px;
+        width: 700px;
+        backdrop-filter: blur(20px);
+      }
+      #scene5 .score-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      #scene5 .score-value {
+        font-size: 48px;
+        font-weight: 800;
+        color: #06d6a0;
+      }
+      #scene5 .score-label {
+        font-size: 14px;
+        color: #94a3b8;
+      }
+      #scene5 .score-bar {
+        width: 100%;
+        height: 8px;
+        background: #1e2d3d;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 32px;
+      }
+      #scene5 .score-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #06d6a0, #10f9b8);
+        border-radius: 4px;
+        width: 0%;
+      }
+      #scene5 .check-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(30,45,61,0.5);
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      #scene5 .check-row:last-child { border-bottom: none; }
+      #scene5 .check-icon { width: 20px; height: 20px; flex-shrink: 0; }
+      #scene5 .check-icon.pass { color: #06d6a0; }
+      #scene5 .check-icon.warn { color: #fbbf24; }
+      #scene5 .check-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #f1f5f9;
+        flex: 1;
+      }
+      #scene5 .check-badge {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 4px 10px;
+        border-radius: 4px;
+      }
+      #scene5 .check-badge.pass {
+        background: rgba(6,214,160,0.12);
+        color: #06d6a0;
+      }
+      #scene5 .check-badge.warn {
+        background: rgba(251,191,36,0.12);
+        color: #fbbf24;
+      }
+
+      /* Scene 6: Outro */
+      #scene6 .product-name {
+        font-size: 96px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #34d399, #93c5fd);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.04em;
+        filter: drop-shadow(0 0 20px rgba(52,211,153,0.3));
+      }
+      #scene6 .tagline {
+        font-size: 24px;
+        font-weight: 500;
+        color: #94a3b8;
+        margin-top: 16px;
+      }
+
+      /* SVG icons inline */
+      .icon-svg { display: inline-block; vertical-align: middle; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="20"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Background layers -->
+      <div id="bg-grid" class="bg-grid clip" data-start="0" data-duration="20" data-track-index="0"></div>
+      <div id="bg-glow" class="bg-glow clip" data-start="0" data-duration="20" data-track-index="0"></div>
+
+      <!-- Scene 1: Hook — The Problem in Numbers (0-3s) -->
+      <div id="scene1" class="scene clip" data-start="0" data-duration="3" data-track-index="1">
+        <div style="text-align:center;">
+          <div class="stat-number">1,240+</div>
+          <div class="stat-label">AI-built sites rescued</div>
+        </div>
+      </div>
+
+      <!-- Scene 2: The Concept — "80% There" (3-7s) -->
+      <div id="scene2" class="scene clip" data-start="3" data-duration="4" data-track-index="2">
+        <div style="text-align:center; max-width:900px;">
+          <div class="line1">Your AI website builder gets you</div>
+          <div class="line2">80% there.</div>
+          <div class="line3">We close the last mile.</div>
+        </div>
+      </div>
+
+      <!-- Scene 3: The Flow — Intake Form (7-11s) -->
+      <div id="scene3" class="scene clip" data-start="7" data-duration="4" data-track-index="3">
+        <div class="form-card">
+          <div class="form-label">Site URL</div>
+          <div class="form-input focused">clientsite.com</div>
+          <div class="form-label">Client Business Name</div>
+          <div class="form-input">Acme Consulting</div>
+          <button class="cta-btn" id="cta-btn">
+            Run Website Scan <span class="cta-arrow">→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scene 4: The Scan — Working (11-14s) -->
+      <div id="scene4" class="scene clip" data-start="11" data-duration="3" data-track-index="4">
+        <div style="text-align:center; position:relative;">
+          <div class="scan-pulse" id="scan-pulse-1"></div>
+          <div class="scan-pulse" id="scan-pulse-2"></div>
+          <div class="scan-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+              <path d="m11 8-2 2 4 4 2-2-4-4z"></path>
+            </svg>
+          </div>
+          <div class="scan-title">Scanning website...</div>
+          <div class="scan-url">clientsite.com</div>
+        </div>
+      </div>
+
+      <!-- Scene 5: The Payoff — Results (14-18s) -->
+      <div id="scene5" class="scene clip" data-start="14" data-duration="4" data-track-index="5">
+        <div class="results-card">
+          <div class="score-header">
+            <div class="score-value" id="score-num">0</div>
+            <div>
+              <div style="font-size:18px;font-weight:600;color:#f1f5f9;">Scan Complete</div>
+              <div class="score-label">Score</div>
+            </div>
+          </div>
+          <div class="score-bar">
+            <div class="score-fill" id="score-fill"></div>
+          </div>
+
+          <div class="check-row" id="check-ssl">
+            <svg class="check-icon pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span class="check-name">SSL Certificate</span>
+            <span class="check-badge pass">PASS</span>
+          </div>
+          <div class="check-row" id="check-dns">
+            <svg class="check-icon pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="m8 12 3 3 5-5"></path></svg>
+            <span class="check-name">DNS Resolution</span>
+            <span class="check-badge pass">PASS</span>
+          </div>
+          <div class="check-row" id="check-seo">
+            <svg class="check-icon warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+            <span class="check-name">SEO Meta</span>
+            <span class="check-badge warn">WARN</span>
+          </div>
+          <div class="check-row" id="check-mobile">
+            <svg class="check-icon pass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg>
+            <span class="check-name">Mobile Viewport</span>
+            <span class="check-badge pass">PASS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 6: Outro — Name + Tagline (18-20s) -->
+      <div id="scene6" class="scene clip" data-start="18" data-duration="2" data-track-index="6">
+        <div style="text-align:center;">
+          <div class="product-name">Livecheck</div>
+          <div class="tagline">Last-Mile Rescue for AI-Built Websites</div>
+        </div>
+      </div>
+
+      <!-- Audio: Music bed -->
+      <audio id="bg-music" data-start="0" data-duration="20" data-track-index="10" data-volume="0.35" src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"></audio>
+      <!-- Audio: SFX -->
+      <audio id="sfx-impact1" data-start="0.3" data-duration="0.12" data-track-index="11" data-volume="0.75" src="assets/sfx/impact/impactSoft_medium_000.ogg"></audio>
+      <audio id="sfx-drop1" data-start="3.8" data-duration="0.11" data-track-index="12" data-volume="0.70" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-drop2" data-start="4.6" data-duration="0.11" data-track-index="13" data-volume="0.70" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-drop3" data-start="5.4" data-duration="0.11" data-track-index="14" data-volume="0.70" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-click1" data-start="10.0" data-duration="0.10" data-track-index="15" data-volume="0.80" src="assets/sfx/interface/click_001.ogg"></audio>
+      <audio id="sfx-glitch1" data-start="11.8" data-duration="0.03" data-track-index="16" data-volume="0.35" src="assets/sfx/interface/glitch_002.ogg"></audio>
+      <audio id="sfx-glitch2" data-start="12.8" data-duration="0.03" data-track-index="17" data-volume="0.35" src="assets/sfx/interface/glitch_002.ogg"></audio>
+      <audio id="sfx-drop4" data-start="15.5" data-duration="0.11" data-track-index="18" data-volume="0.65" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-drop5" data-start="16.0" data-duration="0.11" data-track-index="19" data-volume="0.65" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-drop6" data-start="16.5" data-duration="0.11" data-track-index="20" data-volume="0.65" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-drop7" data-start="17.0" data-duration="0.11" data-track-index="21" data-volume="0.65" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-bell1" data-start="18.3" data-duration="1.5" data-track-index="22" data-volume="0.60" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Scene 1: Hook — stat slams in (0-3s)
+      tl.fromTo("#scene1 .stat-number",
+        { opacity: 0, scale: 1.3, y: 30 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "back.out(1.5)" },
+        0.2
+      );
+      tl.fromTo("#scene1 .stat-label",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        0.7
+      );
+      // Fade out scene 1
+      tl.to("#scene1", { opacity: 0, duration: 0.3, ease: "power2.in" }, 2.7);
+
+      // Scene 2: Concept — three-beat text reveal (3-7s)
+      tl.fromTo("#scene2",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3 },
+        3.0
+      );
+      tl.fromTo("#scene2 .line1",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        3.2
+      );
+      tl.fromTo("#scene2 .line2",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        4.0
+      );
+      tl.fromTo("#scene2 .line3",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        4.8
+      );
+      // Fade out scene 2
+      tl.to("#scene2", { opacity: 0, duration: 0.3, ease: "power2.in" }, 6.7);
+
+      // Scene 3: Intake Form (7-11s)
+      tl.fromTo("#scene3",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3 },
+        7.0
+      );
+      tl.fromTo("#scene3 .form-card",
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        7.2
+      );
+      // CTA button click animation
+      tl.to("#cta-btn", {
+        scale: 0.96,
+        duration: 0.1,
+        ease: "power2.in",
+        onComplete: () => document.getElementById("cta-btn").classList.add("clicked")
+      }, 9.8);
+      tl.to("#cta-btn", { scale: 1, duration: 0.15, ease: "back.out(2)" }, 10.0);
+      // Fade out scene 3
+      tl.to("#scene3", { opacity: 0, duration: 0.3, ease: "power2.in" }, 10.7);
+
+      // Scene 4: Scan (11-14s)
+      tl.fromTo("#scene4",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3 },
+        11.0
+      );
+      tl.fromTo("#scene4 .scan-icon",
+        { opacity: 0, scale: 0.8 },
+        { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.5)" },
+        11.2
+      );
+      tl.fromTo("#scene4 .scan-title",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" },
+        11.6
+      );
+      tl.fromTo("#scene4 .scan-url",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3 },
+        11.9
+      );
+      // Pulse animations
+      tl.to("#scan-pulse-1", {
+        scale: 2.5, opacity: 0, duration: 1.2, ease: "power1.out",
+        repeat: 1, repeatDelay: 0.3
+      }, 11.4);
+      tl.set("#scan-pulse-1", { opacity: 0.6, scale: 1 }, 11.4);
+      // Fade out scene 4
+      tl.to("#scene4", { opacity: 0, duration: 0.3, ease: "power2.in" }, 13.7);
+
+      // Scene 5: Results (14-18s)
+      tl.fromTo("#scene5",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3 },
+        14.0
+      );
+      tl.fromTo("#scene5 .results-card",
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        14.2
+      );
+      // Score bar fill
+      tl.to("#score-fill", {
+        width: "81%",
+        duration: 1.5,
+        ease: "power2.out",
+        onUpdate: function() {
+          const progress = this.progress();
+          document.getElementById("score-num").textContent = Math.round(progress * 81);
+        }
+      }, 14.5);
+      // Check rows cascade in
+      tl.to("#check-ssl", { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 15.5);
+      tl.to("#check-dns", { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 16.0);
+      tl.to("#check-seo", { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 16.5);
+      tl.to("#check-mobile", { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 17.0);
+      // Fade out scene 5
+      tl.to("#scene5", { opacity: 0, duration: 0.3, ease: "power2.in" }, 17.7);
+
+      // Scene 6: Outro (18-20s)
+      tl.fromTo("#scene6",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3 },
+        18.0
+      );
+      tl.fromTo("#scene6 .product-name",
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.5)" },
+        18.2
+      );
+      tl.fromTo("#scene6 .tagline",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        18.7
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

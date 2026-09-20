@@ -33,6 +33,25 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(null, { status: 204, headers });
   }
 
+  // GET /api/auth/sso/metadata — serve SP metadata XML
+  const url = new URL(req.url);
+  if (req.method === 'GET' && url.pathname.endsWith('/sso/metadata')) {
+    const appUrl = process.env.SSO_APP_URL || process.env.SITE_ORIGIN || 'https://livechecks.vercel.app';
+    const acsUrl = `${appUrl}/api/auth/sso/callback`;
+    const entityID = appUrl;
+    const metadata = `<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="${escapeXml(entityID)}">
+  <md:SPSSODescriptor AuthnRequestsSigned="false" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="${escapeXml(acsUrl)}" index="1" />
+  </md:SPSSODescriptor>
+</md:EntityDescriptor>`;
+    return new Response(metadata, {
+      status: 200,
+      headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600', ...headers },
+    });
+  }
+
   if (req.method !== 'POST') {
     return jsonError('Method not allowed', 405, headers);
   }
@@ -340,7 +359,7 @@ async function handleSwitchOrgInternal(req: Request, org_id: string): Promise<Re
     const token = await signToken({
       sub: session.sub,
       email: session.email,
-      agency_name: (session as Record<string, unknown>).agency_name as string | undefined,
+      agency_name: session.agency_name,
       org_id: org.id,
       org_slug: org.slug,
       roles: [membership.role],
@@ -373,4 +392,13 @@ function getDefaultPermissions(role: string): string[] {
     default:
       return [];
   }
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }

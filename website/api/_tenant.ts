@@ -28,7 +28,7 @@ export async function getTenantContext(req: Request): Promise<TenantContext | nu
   if (!session) return null;
 
   // Get org_id from header or JWT payload
-  const orgId = req.headers.get('x-org-id') || (session as Record<string, unknown>).org_id as string;
+  const orgId = req.headers.get('x-org-id') || session.org_id;
 
   if (orgId) {
     // Validate membership for specific org

@@ -1,0 +1,3 @@
+AI ships the site. We close the last mile.
+
+Livecheck runs a fixed technical checklist against any AI-built website — SSL, DNS, SEO, forms, speed, mobile — auto-patches 80% of what's broken, and hands you a white-label SLA certificate. 1,240+ sites rescued. No spec calls, no open-ended scoping.

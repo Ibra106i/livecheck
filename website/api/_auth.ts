@@ -25,7 +25,7 @@ export async function signToken(payload: SessionPayload): Promise<string> {
     .sign(getSecretKey());
 }
 
-export async function signTokenShort-lived(payload: SessionPayload): Promise<string> {
+export async function signTokenShortLived(payload: SessionPayload): Promise<string> {
   return new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()

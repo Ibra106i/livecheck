@@ -32,6 +32,17 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError('Database not configured', 503, headers);
   }
 
+  // Route nested paths: /api/organizations/:id/members, /api/organizations/:id/sso-config
+  const url = new URL(req.url);
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  // pathParts: ['api', 'organizations', ':id', 'members'] or ['api', 'organizations', ':id', 'sso-config']
+  if (pathParts.length >= 4 && pathParts[0] === 'api' && pathParts[1] === 'organizations') {
+    const orgId = pathParts[2];
+    const sub = pathParts[3];
+    if (sub === 'members') return handleMembers(req, orgId);
+    if (sub === 'sso-config') return handleSSOConfig(req, orgId);
+  }
+
   const tenant = await getTenantContext(req);
   if (!tenant) {
     return jsonError('Unauthorized — no organization context', 401, headers);
