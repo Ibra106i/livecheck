@@ -26,3 +26,6 @@ dist-ssr
 .vercel
 .env*
 !.env.local.example
+
+# Generated types
+src/types/supabase.ts
