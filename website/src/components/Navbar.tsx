@@ -1,145 +1,148 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, ArrowRight, LogOut } from 'lucide-react';
-import { Logo } from './Logo';
-import { Button } from './ui/button';
-import { Separator } from './ui/separator';
-import { cn } from '../lib/utils';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState, type MouseEvent } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Github, Menu, X } from 'lucide-react';
+import { Wordmark } from './marketing/Wordmark';
 
-const LINKS = [
-  { href: '#features', label: 'Features' },
-  { href: '#problem', label: 'The Problem' },
-  { href: '#solution', label: 'The Solution' },
-  { href: '#how-it-works', label: 'How It Works' },
-  { href: '#pricing', label: 'Pricing' },
-  { href: '#proof', label: 'Proof' },
-  { href: '#faq', label: 'FAQ' },
+const NAV_LINKS = [
+  { label: 'Pillars', href: '#pillars' },
+  { label: 'CI', href: '#ci' },
+  { label: 'Example output', href: '#output' },
 ];
+
+const GITHUB_URL = 'https://github.com/Ibra106i/livecheck';
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { pathname, hash } = useLocation();
 
+  // Land on the right section when arriving from another route with a hash.
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    if (pathname !== '/' || !hash) return;
+    const target = document.querySelector(hash);
+    if (!target) return;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    });
+  }, [pathname, hash]);
 
-  const handleAnchor = (href: string) => {
+  const handleAnchor = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     setOpen(false);
-    if (window.location.pathname !== '/') {
-      navigate('/');
-      window.setTimeout(() => {
-        document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
-      }, 80);
-    } else {
-      document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (pathname !== '/') return; // Let the router follow the href to `/#section`.
+    const target = document.querySelector(href);
+    if (!target) return;
+    event.preventDefault();
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+  };
+
+  const handleStart = (event: MouseEvent<HTMLAnchorElement>) => {
+    setOpen(false);
+    if (pathname !== '/') return;
+    const target = document.getElementById('install');
+    if (!target) return;
+    event.preventDefault();
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
   };
 
   return (
-    <header className={cn(
-      'sticky top-0 z-50 transition-all duration-300',
-      scrolled ? 'bg-bg/90 backdrop-blur-md border-b border-border' : 'bg-transparent'
-    )}>
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2" aria-label="Livecheck Home">
-          <Logo size="lg" />
-        </Link>
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-          {LINKS.map((l) => (
-            <button
-              key={l.href}
-              onClick={() => handleAnchor(l.href)}
-              className="px-3.5 py-2 rounded-lg text-sm font-medium text-fg-muted transition-all duration-200 hover:text-fg hover:bg-bg-elevated/50"
-            >
-              {l.label}
-            </button>
-          ))}
-        </nav>
-        <div className="hidden items-center gap-3 md:flex">
-          {user ? (
-            <>
-              <span className="text-xs text-zinc-500">{user.email}</span>
-              <Link to="/dashboard">
-                <Button variant="ghost" size="sm">
-                  Dashboard
-                </Button>
-              </Link>
-              <Button variant="ghost" size="sm" onClick={() => { logout(); navigate('/'); }}>
-                <LogOut className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">
-                <Button variant="ghost" size="sm">
-                  Sign In
-                </Button>
-              </Link>
-              <Link to="/audit">
-                <Button size="sm">
-                  Start Audit <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </>
-          )}
-        </div>
-        <button
-          className="md:hidden text-fg-muted hover:text-fg transition-colors"
-          onClick={() => setOpen((o) => !o)}
-          aria-label="Toggle menu"
-          aria-expanded={open}
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </div>
-      {open && (
-        <div className="border-t border-border bg-bg/95 backdrop-blur-md px-4 py-4 md:hidden animate-in">
-          <div className="flex flex-col gap-2">
-            {LINKS.map((l) => (
-              <button
-                key={l.href}
-                onClick={() => handleAnchor(l.href)}
-                className="px-3 py-2.5 rounded-lg text-left text-sm font-medium text-fg-muted hover:text-fg hover:bg-bg-elevated transition-colors"
+    <>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-panel focus:px-4 focus:py-2 focus:text-sm focus:text-white focus:outline-none focus:ring-2 focus:ring-cyan"
+      >
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-40 border-b border-line bg-ink/75 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link
+            to="/"
+            className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            aria-label="Livecheck home"
+          >
+            <Wordmark />
+          </Link>
+
+          <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(event) => handleAnchor(event, link.href)}
+                className="select-none rounded-lg px-3 py-2 text-[13px] font-medium text-slate-400 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
               >
-                {l.label}
-              </button>
+                {link.label}
+              </a>
             ))}
-            <Separator className="my-2" />
-            <div className="flex flex-col gap-2">
-              {user ? (
-                <>
-                  <div className="px-3 text-xs text-zinc-500">{user.email}</div>
-                  <Link to="/dashboard" onClick={() => setOpen(false)} className="text-center">
-                    <Button variant="outline" className="w-full">
-                      Dashboard
-                    </Button>
-                  </Link>
-                  <Button variant="ghost" className="w-full" onClick={() => { logout(); navigate('/'); setOpen(false); }}>
-                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" onClick={() => setOpen(false)} className="text-center">
-                    <Button variant="outline" className="w-full">
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link to="/audit" onClick={() => setOpen(false)} className="text-center">
-                    <Button className="w-full">Start Audit</Button>
-                  </Link>
-                </>
-              )}
-            </div>
+          </nav>
+
+          <div className="hidden items-center gap-2 md:flex">
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label="Livecheck on GitHub"
+              className="inline-flex h-9 w-9 select-none items-center justify-center rounded-lg border border-line text-slate-400 transition-colors hover:border-white/25 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            >
+              <Github aria-hidden="true" className="h-4 w-4" />
+            </a>
+            <a
+              href="#install"
+              onClick={handleStart}
+              className="inline-flex select-none items-center rounded-lg bg-cyan px-4 py-2 text-[13px] font-semibold text-ink transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+            >
+              Get Started
+            </a>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            className="inline-flex h-9 w-9 select-none items-center justify-center rounded-lg border border-line text-slate-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:hidden"
+          >
+            {open ? <X aria-hidden="true" className="h-4 w-4" /> : <Menu aria-hidden="true" className="h-4 w-4" />}
+          </button>
         </div>
-      )}
-    </header>
+
+        <div
+          id="mobile-nav"
+          hidden={!open}
+          className="border-t border-line bg-ink/95 px-4 py-4 backdrop-blur-md md:hidden"
+        >
+          <nav aria-label="Mobile navigation" className="flex flex-col gap-1">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(event) => handleAnchor(event, link.href)}
+                className="select-none rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+              >
+                {link.label}
+              </a>
+            ))}
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="select-none rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+            >
+              GitHub
+            </a>
+            <a
+              href="#install"
+              onClick={handleStart}
+              className="mt-2 select-none rounded-lg bg-cyan px-3 py-2.5 text-center text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+            >
+              Get Started
+            </a>
+          </nav>
+        </div>
+      </header>
+    </>
   );
 }

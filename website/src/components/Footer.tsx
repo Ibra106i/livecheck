@@ -1,73 +1,69 @@
-import { Link } from 'react-router-dom';
-import { Logo } from './Logo';
-import { Twitter, Github, Mail, Linkedin } from 'lucide-react';
+import { Wordmark } from './marketing/Wordmark';
+
+const GITHUB_URL = 'https://github.com/Ibra106i/livecheck';
+
+const LINK_GROUPS = [
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Pillars', href: '#pillars' },
+      { label: 'CI usage', href: '#ci' },
+      { label: 'Example output', href: '#output' },
+      { label: 'Install', href: '#install' },
+    ],
+  },
+  {
+    heading: 'Project',
+    links: [
+      { label: 'GitHub', href: GITHUB_URL },
+      { label: 'npm package', href: 'https://www.npmjs.com/package/livechecks' },
+      { label: 'Issues', href: `${GITHUB_URL}/issues` },
+      { label: 'MIT license', href: `${GITHUB_URL}/blob/main/LICENSE` },
+    ],
+  },
+];
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-bg-elevated/50">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
-          <div className="lg:col-span-2">
-            <Logo size="lg" />
-            <p className="mt-4 max-w-xs text-sm text-fg-muted leading-relaxed">
-              The last-mile rescue layer agencies and dev shops plug in before handing an
-              AI-built site to a client. Fixed scope. Flat fee. Zero scope creep.
+    <footer className="bg-ink">
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-[minmax(0,1.6fr)_repeat(2,minmax(0,1fr))]">
+          <div>
+            <Wordmark />
+            <p className="mt-4 max-w-sm text-sm leading-6 text-slate-400">
+              A TypeScript/Node.js CLI that audits a deployed website and returns a 0–100 score across
+              DNS, SSL, SEO, security headers, mobile layout and page speed.
             </p>
-            <div className="mt-6 flex gap-4">
-              <a href="https://twitter.com/livecheck" target="_blank" rel="noopener noreferrer" className="text-fg-muted hover:text-primary transition-colors" aria-label="Twitter">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="https://github.com/livecheck" target="_blank" rel="noopener noreferrer" className="text-fg-muted hover:text-primary transition-colors" aria-label="GitHub">
-                <Github className="h-5 w-5" />
-              </a>
-              <a href="https://linkedin.com/company/livecheck" target="_blank" rel="noopener noreferrer" className="text-fg-muted hover:text-primary transition-colors" aria-label="LinkedIn">
-                <Linkedin className="h-5 w-5" />
-              </a>
-              <a href="mailto:partners@livecheck.dev" className="text-fg-muted hover:text-primary transition-colors" aria-label="Email">
-                <Mail className="h-5 w-5" />
-              </a>
-            </div>
           </div>
-          <div>
-            <h4 className="text-sm font-semibold text-fg">Product</h4>
-            <ul className="mt-4 space-y-3 text-sm text-fg-muted">
-              <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
-              <li><a href="#solution" className="hover:text-primary transition-colors">The 5 Fixes</a></li>
-              <li><a href="#how-it-works" className="hover:text-primary transition-colors">How It Works</a></li>
-              <li><a href="#pricing" className="hover:text-primary transition-colors">Pricing & Boundaries</a></li>
-              <li><a href="#proof" className="hover:text-primary transition-colors">Case Studies</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-fg">Agencies</h4>
-            <ul className="mt-4 space-y-3 text-sm text-fg-muted">
-              <li><Link to="/dashboard" className="hover:text-primary transition-colors">Agency Dashboard</Link></li>
-              <li><Link to="/audit" className="hover:text-primary transition-colors">Start Pre-Intake Audit</Link></li>
-              <li><Link to="/white-label" className="hover:text-primary transition-colors">White-Label Program</Link></li>
-              <li><a href="#faq" className="hover:text-primary transition-colors">Partner FAQ</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-fg">Company</h4>
-            <ul className="mt-4 space-y-3 text-sm text-fg-muted">
-              <li><a href="#about" className="hover:text-primary transition-colors">About Us</a></li>
-              <li><a href="#careers" className="hover:text-primary transition-colors">Careers</a></li>
-              <li><a href="#press" className="hover:text-primary transition-colors">Press</a></li>
-              <li><a href="#contact" className="hover:text-primary transition-colors">Contact</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-fg">Legal</h4>
-            <ul className="mt-4 space-y-3 text-sm text-fg-muted">
-              <li><a href="#privacy" className="hover:text-primary transition-colors">Privacy Policy</a></li>
-              <li><a href="#terms" className="hover:text-primary transition-colors">Terms of Service</a></li>
-              <li><a href="#sla" className="hover:text-primary transition-colors">SLA</a></li>
-            </ul>
-          </div>
+
+          {LINK_GROUPS.map((group) => (
+            <nav key={group.heading} aria-label={group.heading}>
+              <h2 className="font-mono text-[12px] uppercase tracking-[0.18em] text-slate-400">
+                {group.heading}
+              </h2>
+              <ul className="mt-4 space-y-2.5">
+                {group.links.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      className="rounded text-[13px] text-slate-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
-        <div className="mt-12 flex flex-col items-center justify-between gap-6 border-t border-border pt-8 text-xs text-fg-subtle sm:flex-row">
-          <p>© {new Date().getFullYear()} Livecheck. Built for agencies, not DIY.</p>
-          <p>Custom backend & API work billed separately at $185/hr.</p>
+
+        <div className="mt-12 flex flex-col gap-2 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-mono text-[12px] text-slate-400">
+            © {new Date().getFullYear()} Livecheck · MIT licensed
+          </p>
+          <p className="text-[12px] leading-5 text-slate-400">
+            Reports describe a single point-in-time audit. Sites change after they are checked.
+          </p>
         </div>
       </div>
     </footer>

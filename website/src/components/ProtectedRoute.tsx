@@ -35,3 +35,5 @@ export function ProtectedRoute({ children, requireOrg = true, requiredPermission
 
   return <>{children}</>;
 }
+
+export default ProtectedRoute;

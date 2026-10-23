@@ -1,52 +1,20 @@
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import {
-  Hero,
-  ProblemSection,
-  SolutionSection,
-  HowItWorks,
-  ValueSection,
-  PartnersSection,
-  RoadmapSection,
-  CTASection,
-  TrustBar,
-  Testimonials,
-  CaseStudies,
-  FAQ,
-  StatsBar,
-} from '../components/landing';
+import { Hero } from '../components/marketing/Hero';
+import { Pillars } from '../components/marketing/Pillars';
+import { CiSection } from '../components/marketing/CiSection';
+import { FinalCta } from '../components/marketing/FinalCta';
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-bg text-fg">
+    <div className="min-h-screen bg-ink">
       <Navbar />
-
-      <Hero />
-
-      <TrustBar />
-
-      <ProblemSection />
-
-      <SolutionSection />
-
-      <HowItWorks />
-
-      <StatsBar />
-
-      <ValueSection />
-
-      <PartnersSection />
-
-      <Testimonials />
-
-      <CaseStudies />
-
-      <RoadmapSection />
-
-      <FAQ />
-
-      <CTASection />
-
+      <main id="main">
+        <Hero />
+        <Pillars />
+        <CiSection />
+        <FinalCta />
+      </main>
       <Footer />
     </div>
   );
