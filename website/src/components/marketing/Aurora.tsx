@@ -251,10 +251,10 @@ export function Aurora({ className }: { className?: string }) {
   }, []);
 
   return (
-    <div ref={wrapperRef} aria-hidden="true" className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)}>
+    <div ref={wrapperRef} aria-hidden="true" className={cn('pointer-events-none absolute inset-0 overflow-hidden w-screen max-w-[100vw] mx-auto', webglFailed ? 'opacity-0' : 'opacity-100')}>
       {/* Static fallback: also what renders while the shader is warming up. */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 max-w-[100vw] mx-auto"
         style={{
           background:
             'radial-gradient(60% 55% at 18% 22%, rgba(123,36,217,0.55) 0%, rgba(123,36,217,0) 70%),' +
