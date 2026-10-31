@@ -24,32 +24,6 @@ export async function verifyClerkToken(req: Request): Promise<{ userId: string; 
   }
 }
 
-export async function getTenantContext(req: Request): Promise<TenantContext | null> {
-  const auth = await verifyClerkToken(req);
-  if (!auth) return null;
-
-  const orgId = req.headers.get('x-org-id');
-  if (!orgId) return null;
-
-  if (!supabase) return null;
-
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('role, permissions')
-    .eq('user_id', auth.userId)
-    .eq('organization_id', orgId)
-    .single();
-
-  if (!membership) return null;
-
-  return {
-    userId: auth.userId,
-    orgId,
-    role: membership.role,
-    permissions: membership.permissions || [],
-  };
-}
-
 export function hasPermission(permissions: string[], permission: string): boolean {
   if (permissions.includes('*')) return true;
   return permissions.includes(permission);
@@ -65,7 +39,7 @@ export function corsHeaders(origin?: string): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Org-Id',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Org-Id, X-User-Email, X-User-Name',
   };
 }
 

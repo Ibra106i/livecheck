@@ -67,6 +67,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [token, setToken] = useState<string | null>(null);
 
+  const userEmail = clerkUser?.emailAddresses[0]?.emailAddress || '';
+  const userName = [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(' ');
+
+  // Provisioning identity headers: the API creates the local user + personal
+  // org on first contact and needs the email the Clerk JWT does not always carry.
+  const identityHeaders = useCallback((): Record<string, string> => {
+    const h: Record<string, string> = {};
+    if (userEmail) h['x-user-email'] = userEmail;
+    if (userName) h['x-user-name'] = userName;
+    return h;
+  }, [userEmail, userName]);
+
   // Get Clerk session token
   useEffect(() => {
     if (session) {
@@ -80,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchOrganizations = useCallback(async (clerkToken: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/organizations`, {
-        headers: { Authorization: `Bearer ${clerkToken}` },
+        headers: { Authorization: `Bearer ${clerkToken}`, ...identityHeaders() },
       });
       if (res.ok) {
         const data = await res.json();
@@ -106,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Failed to fetch organizations:', err);
     }
-  }, []);
+  }, [identityHeaders]);
 
   // Fetch orgs when token becomes available
   useEffect(() => {
@@ -148,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...identityHeaders(),
       },
       body: JSON.stringify({ name }),
     });
@@ -165,16 +178,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(ORG_KEY, JSON.stringify(newOrg));
 
     return newOrg;
-  }, [token, organizations]);
+  }, [token, organizations, identityHeaders]);
 
   const authHeaders = useCallback((): Record<string, string> => {
     if (!token) return {};
-    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}`, ...identityHeaders() };
     if (organization) {
       headers['x-org-id'] = organization.id;
     }
     return headers;
-  }, [token, organization]);
+  }, [token, organization, identityHeaders]);
 
   const user = clerkUser ? {
     id: clerkUser.id,

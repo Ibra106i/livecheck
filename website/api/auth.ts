@@ -1,4 +1,5 @@
-import { verifyClerkToken, supabase, corsHeaders, jsonError, getDefaultPermissions } from './_clerk.js';
+import { supabase, corsHeaders, jsonError, getDefaultPermissions } from './_clerk.js';
+import { resolveUser, ensurePersonalOrg } from './_identity.js';
 
 export default async function handler(req: Request): Promise<Response> {
   const headers = corsHeaders();
@@ -7,13 +8,13 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(null, { status: 204, headers });
   }
 
-  const auth = await verifyClerkToken(req);
-  if (!auth) {
-    return jsonError('Unauthorized', 401, headers);
-  }
-
   if (!supabase) {
     return jsonError('Database not configured', 503, headers);
+  }
+
+  const user = await resolveUser(req);
+  if (!user) {
+    return jsonError('Unauthorized', 401, headers);
   }
 
   const url = new URL(req.url);
@@ -21,21 +22,12 @@ export default async function handler(req: Request): Promise<Response> {
   // GET /api/auth — return user's organizations
   if (req.method === 'GET' && url.pathname === '/api/auth') {
     try {
-      // Find user by clerk_id
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', auth.userId)
-        .single();
-
-      if (!user) {
-        return jsonError('User not found', 404, headers);
-      }
+      await ensurePersonalOrg(user.userId);
 
       const { data: memberships } = await supabase
         .from('memberships')
         .select('role, permissions, organizations(id, name, slug)')
-        .eq('user_id', user.id);
+        .eq('user_id', user.userId);
 
       const organizations = (memberships || []).map((m) => {
         const org = m.organizations as unknown as { id: string; name: string; slug: string };
@@ -68,21 +60,10 @@ export default async function handler(req: Request): Promise<Response> {
         return jsonError('org_id is required', 400, headers);
       }
 
-      // Find user by clerk_id
-      const { data: user } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clerk_id', auth.userId)
-        .single();
-
-      if (!user) {
-        return jsonError('User not found', 404, headers);
-      }
-
       const { data: membership } = await supabase
         .from('memberships')
         .select('role, permissions, organizations(id, name, slug)')
-        .eq('user_id', user.id)
+        .eq('user_id', user.userId)
         .eq('organization_id', org_id)
         .single();
 
@@ -112,3 +93,4 @@ export default async function handler(req: Request): Promise<Response> {
 
   return jsonError('Not found', 404, headers);
 }
+
