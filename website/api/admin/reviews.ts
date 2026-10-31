@@ -1,5 +1,6 @@
 import { supabase, corsHeaders, jsonError, jsonResponse } from '../_clerk.js';
 import { resolveUser } from '../_identity.js';
+import { sendPush, sendEmail } from '../_notify.js';
 
 // Reviewer console (plan section 9). Cross-tenant, privileged surface, so it is
 // gated by an explicit allowlist rather than org membership.
@@ -15,6 +16,55 @@ interface AnnotationInput {
   severity: string;
   note: string;
   fix_guidance?: string;
+}
+
+// Notify the owning org's members that their expert-reviewed report is ready.
+// Best-effort: never throws, so a delivery is recorded even if alerts fail.
+async function notifyReviewDelivered(organizationId: string, siteUrl: string): Promise<void> {
+  try {
+    if (!supabase || !organizationId) return;
+    const { data: members } = await supabase
+      .from('memberships')
+      .select('user_id')
+      .eq('organization_id', organizationId);
+    const userIds = [...new Set((members || []).map((m) => m.user_id).filter(Boolean))];
+    if (userIds.length === 0) return;
+
+    const host = (() => {
+      try {
+        return new URL(siteUrl).hostname;
+      } catch {
+        return siteUrl;
+      }
+    })();
+
+    const [{ data: users }, { data: tokens }] = await Promise.all([
+      supabase.from('users').select('email').in('id', userIds),
+      supabase.from('device_tokens').select('token').in('user_id', userIds),
+    ]);
+
+    const emails = ((users as { email: string }[]) || []).map((u) => u.email).filter(Boolean);
+    const pushTokens = ((tokens as { token: string }[]) || []).map((t) => t.token).filter(Boolean);
+
+    if (pushTokens.length) {
+      await sendPush(pushTokens, {
+        title: 'Expert review ready',
+        body: `Your reviewed report for ${host} is ready to read.`,
+        data: { type: 'review_delivered', url: siteUrl },
+      });
+    }
+    for (const email of emails) {
+      await sendEmail({
+        to: email,
+        subject: `Your expert review of ${host} is ready`,
+        html:
+          `<p>A specialist has finished the expert review of <strong>${host}</strong>.</p>` +
+          `<p>Open Livecheck to read the annotated report and the overall summary.</p>`,
+      });
+    }
+  } catch (err) {
+    console.error('review delivery notification failed:', err instanceof Error ? err.message : err);
+  }
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -61,7 +111,7 @@ export default async function handler(req: Request): Promise<Response> {
 
       const { data: booking } = await supabase
         .from('review_bookings')
-        .select('id, status, assigned_to')
+        .select('id, status, assigned_to, organization_id, site_url')
         .eq('id', bookingId)
         .maybeSingle();
       if (!booking) return jsonError('Booking not found', 404, headers);
@@ -125,6 +175,9 @@ export default async function handler(req: Request): Promise<Response> {
           .select('id, status, delivered_at')
           .single();
         if (error) return jsonError(error.message, 500, headers);
+
+        // Best-effort: tell the org owner their expert review is ready.
+        await notifyReviewDelivered(booking.organization_id, booking.site_url);
         return jsonResponse({ review: data }, 200, headers);
       }
 
