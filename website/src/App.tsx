@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Landing = lazy(() => import('./pages/Landing'));
+const Pricing = lazy(() => import('./pages/Pricing'));
 const Legal = lazy(() => import('./pages/Legal'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -38,6 +39,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
 
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/legal" element={<Legal />} />
             <Route path="/legal/:slug" element={<Legal />} />
 

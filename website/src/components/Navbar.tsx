@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { label: 'Pillars', href: '#pillars' },
   { label: 'CI', href: '#ci' },
   { label: 'Example output', href: '#output' },
+  { label: 'Pricing', href: '/pricing' },
 ];
 
 const GITHUB_URL = 'https://github.com/Ibra106i/livecheck';
@@ -31,6 +32,7 @@ export function Navbar() {
 
   const handleAnchor = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     setOpen(false);
+    if (!href.startsWith('#')) return; // Real routes: let the browser/router navigate.
     if (pathname !== '/') return; // Let the router follow the href to `/#section`.
     const target = document.querySelector(href);
     if (!target) return;

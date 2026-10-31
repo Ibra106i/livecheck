@@ -9,6 +9,7 @@ const LINK_GROUPS = [
       { label: 'Pillars', href: '#pillars' },
       { label: 'CI usage', href: '#ci' },
       { label: 'Example output', href: '#output' },
+      { label: 'Pricing', href: '/pricing' },
       { label: 'Install', href: '#install' },
     ],
   },
