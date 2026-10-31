@@ -231,8 +231,8 @@ INSERT INTO play_products (product_id, type, credits, plan) VALUES
   ('scan_credit_1',    'consumable',   1,  NULL),
   ('scan_credit_5',    'consumable',   5,  NULL),
   ('scan_credit_20',   'consumable',   20, NULL),
-  ('review_standard',  'consumable',   1,  'review'),
-  ('review_priority',  'consumable',   1,  'review'),
+  ('review_standard',  'consumable',   0,  'review'),
+  ('review_priority',  'consumable',   0,  'review'),
   ('monitor_5_weekly', 'subscription', 0,  'monitor_5_weekly'),
   ('monitor_25_daily', 'subscription', 0,  'monitor_25_daily')
 ON CONFLICT (product_id) DO NOTHING;
