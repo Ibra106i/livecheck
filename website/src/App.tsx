@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Landing = lazy(() => import('./pages/Landing'));
+const Legal = lazy(() => import('./pages/Legal'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // The authenticated shell pulls in Clerk and the project store; keep it out of
@@ -36,6 +37,9 @@ function App() {
         <Suspense fallback={<Loading />}>
           <Routes>
             <Route path="/" element={<Landing />} />
+
+            <Route path="/legal" element={<Legal />} />
+            <Route path="/legal/:slug" element={<Legal />} />
 
             <Route element={<AuthShell />}>
               <Route path="/login" element={<ClerkLogin />} />

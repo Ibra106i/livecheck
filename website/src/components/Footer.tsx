@@ -21,13 +21,24 @@ const LINK_GROUPS = [
       { label: 'MIT license', href: `${GITHUB_URL}/blob/main/LICENSE` },
     ],
   },
+  {
+    heading: 'Legal',
+    links: [
+      { label: 'Privacy', href: '/legal/privacy' },
+      { label: 'Terms', href: '/legal/terms' },
+      { label: 'Refunds', href: '/legal/refunds' },
+      { label: 'Security', href: '/legal/security' },
+      { label: 'Acceptable use', href: '/legal/acceptable-use' },
+      { label: 'Delete account', href: '/legal/deletion' },
+    ],
+  },
 ];
 
 export function Footer() {
   return (
     <footer className="bg-ink">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[minmax(0,1.6fr)_repeat(2,minmax(0,1fr))]">
+        <div className="grid gap-10 md:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]">
           <div>
             <Wordmark />
             <p className="mt-4 max-w-sm text-sm leading-6 text-slate-400">
