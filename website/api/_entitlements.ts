@@ -128,3 +128,71 @@ export async function revokeCredits(
   });
   return !error;
 }
+
+async function ledgerOnce(
+  row: Record<string, unknown>,
+  purchaseId?: string,
+  scanJobId?: string
+): Promise<boolean> {
+  if (!supabase) return false;
+  const builder = scanJobId
+    ? supabase
+        .from('credit_ledger')
+        .select('id')
+        .eq('scan_job_id', scanJobId)
+        .eq('reason', row.reason as string)
+    : supabase
+        .from('credit_ledger')
+        .select('id')
+        .eq('purchase_id', purchaseId as string)
+        .eq('reason', row.reason as string);
+  const { data: existing } = await builder.maybeSingle();
+  if (existing) return false;
+  const { error } = await supabase.from('credit_ledger').insert(row);
+  return !error;
+}
+
+/** Deduct one credit when a scan job is created (a successful scan keeps it). */
+export async function reserveScanJob(
+  organizationId: string,
+  userId: string,
+  scanJobId: string
+): Promise<boolean> {
+  return ledgerOnce(
+    { organization_id: organizationId, user_id: userId, delta: -1, reason: 'scan_reserve', scan_job_id: scanJobId },
+    undefined,
+    scanJobId
+  );
+}
+
+/** Release the reserved credit when a scan fails (plan section 7). */
+export async function refundScanJob(
+  organizationId: string,
+  userId: string,
+  scanJobId: string
+): Promise<boolean> {
+  return ledgerOnce(
+    { organization_id: organizationId, user_id: userId, delta: 1, reason: 'scan_refund', scan_job_id: scanJobId },
+    undefined,
+    scanJobId
+  );
+}
+
+/** One free scan per account (plan section 2), granted at most once per org. */
+export async function grantFreeScan(organizationId: string, userId: string): Promise<boolean> {
+  if (!supabase) return false;
+  const { data: existing } = await supabase
+    .from('credit_ledger')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('reason', 'admin_grant')
+    .maybeSingle();
+  if (existing) return false;
+  const { error } = await supabase.from('credit_ledger').insert({
+    organization_id: organizationId,
+    user_id: userId,
+    delta: 1,
+    reason: 'admin_grant',
+  });
+  return !error;
+}

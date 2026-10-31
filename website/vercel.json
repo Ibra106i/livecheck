@@ -4,6 +4,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/scans/:id",
+      "destination": "/api/scans"
+    },
+    {
       "source": "/api/organizations/:id/members/:user_id",
       "destination": "/api/organizations"
     },
