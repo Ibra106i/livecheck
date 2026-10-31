@@ -5,6 +5,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { scanWebsite, type AuditReport } from 'livechecks';
+import { sendPush, sendEmail } from './notify';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -51,20 +52,52 @@ async function claimJob(): Promise<ScanJob | null> {
   return rows[0] || null;
 }
 
-async function recordReport(job: ScanJob, report: AuditReport): Promise<void> {
-  await supabase.from('reports').insert({
-    user_id: job.user_id,
-    organization_id: job.organization_id,
-    site_id: job.site_id,
-    scan_job_id: job.id,
-    token: crypto.randomUUID(),
-    url: report.url,
-    score: report.score,
-    summary: `Livecheck score ${report.score}/100`,
-    results: report,
-    generated_by: 'worker',
-    visibility: 'private',
-  });
+async function recordReport(job: ScanJob, report: AuditReport): Promise<string | null> {
+  const token = crypto.randomUUID();
+  const { data, error } = await supabase
+    .from('reports')
+    .insert({
+      user_id: job.user_id,
+      organization_id: job.organization_id,
+      site_id: job.site_id,
+      scan_job_id: job.id,
+      token,
+      url: report.url,
+      score: report.score,
+      summary: `Livecheck score ${report.score}/100`,
+      results: report,
+      generated_by: 'worker',
+      visibility: 'private',
+    })
+    .select('token')
+    .single();
+  if (error) {
+    console.error('report insert failed:', error.message);
+    return null;
+  }
+  return (data?.token as string) ?? token;
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+async function getDeviceTokens(userId: string): Promise<string[]> {
+  const { data, error } = await supabase.from('device_tokens').select('token').eq('user_id', userId);
+  if (error) {
+    console.error('device token lookup failed:', error.message);
+    return [];
+  }
+  return ((data as { token: string }[]) || []).map((row) => row.token);
+}
+
+async function getUserEmail(userId: string): Promise<string | null> {
+  const { data } = await supabase.from('users').select('email').eq('id', userId).maybeSingle();
+  return (data?.email as string) || null;
 }
 
 function failedCheckIds(report: AuditReport): string[] {
@@ -89,13 +122,56 @@ async function detectDrift(job: ScanJob, report: AuditReport): Promise<void> {
   const newFailures = failedCheckIds(report).filter((id) => !prevFails.has(id));
 
   if (scoreDrop >= 5 || newFailures.length > 0) {
-    const { error } = await supabase.from('drift_events').insert({
-      site_id: job.site_id,
-      previous_score: prev.score,
-      current_score: report.score,
-      new_failures: newFailures,
+    const { data: inserted, error } = await supabase
+      .from('drift_events')
+      .insert({
+        site_id: job.site_id,
+        previous_score: prev.score,
+        current_score: report.score,
+        new_failures: newFailures,
+      })
+      .select('id')
+      .single();
+    if (error) {
+      console.error('drift insert failed:', error.message);
+      return;
+    }
+    await alertDrift(job, hostOf(report.url), prev.score ?? 0, report.score, newFailures);
+    if (inserted?.id) {
+      await supabase.from('drift_events').update({ notified_at: new Date().toISOString() }).eq('id', inserted.id);
+    }
+  }
+}
+
+async function alertDrift(
+  job: ScanJob,
+  host: string,
+  previousScore: number,
+  currentScore: number,
+  newFailures: string[]
+): Promise<void> {
+  const reason =
+    currentScore < previousScore
+      ? `score dropped from ${previousScore} to ${currentScore}`
+      : `${newFailures.length} new check${newFailures.length === 1 ? '' : 's'} failing`;
+
+  const tokens = await getDeviceTokens(job.user_id);
+  if (tokens.length) {
+    await sendPush(tokens, {
+      title: 'Drift alert',
+      body: `${host}: ${reason}`,
+      data: { type: 'drift', site_id: job.site_id ?? '', url: job.url },
     });
-    if (error) console.error('drift insert failed:', error.message);
+  }
+
+  const email = await getUserEmail(job.user_id);
+  if (email) {
+    await sendEmail({
+      to: email,
+      subject: `Livecheck drift alert: ${host}`,
+      html: `<p>A scheduled scan of <strong>${host}</strong> detected a change: ${reason}.</p>` +
+        `<p>Open Livecheck to review the updated report.</p>`,
+    });
   }
 }
 
@@ -123,8 +199,17 @@ async function processJob(job: ScanJob): Promise<void> {
       .from('scan_jobs')
       .update({ status: 'done', score: report.score, result: report, finished_at: new Date().toISOString() })
       .eq('id', job.id);
-    await recordReport(job, report);
+    const reportToken = await recordReport(job, report);
     await detectDrift(job, report);
+
+    const tokens = await getDeviceTokens(job.user_id);
+    if (tokens.length) {
+      await sendPush(tokens, {
+        title: 'Scan complete',
+        body: `${hostOf(job.url)} scored ${report.score}/100`,
+        data: { type: 'scan_done', report_token: reportToken ?? '', score: String(report.score), url: job.url },
+      });
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'scan failed';
     const retryable = job.attempts < MAX_ATTEMPTS;
